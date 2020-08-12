@@ -1,0 +1,85 @@
+.no-select {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.green-hover {
+    cursor: pointer;
+}
+
+.green-tooltip {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    color: rgba(0,0,0,.65);
+    font-size: 14px;
+    line-height: 1.5;
+    list-style: none;
+    position: absolute;
+    display: none;
+    z-index: 110;
+}
+.green-tooltip-placement-top{
+    padding-bottom: 8px;
+    transform: translateX(-50%) translateY(-100%);
+}
+.green-tooltip-placement-bottom{
+    padding-top: 8px;
+    transform: translateX(-50%);
+}
+.green-tooltip-text {
+    min-width: 30px;
+    padding: 6px 8px;
+    color: rgba(0,0,0,.65);
+    text-align: left;
+    text-decoration: none;
+    word-wrap: break-word;
+    background-color: #fff;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.15);
+}
+.green-tooltip-arrow {
+    position: absolute;
+    display: block;
+    width: 13px;
+    height: 13px;
+    overflow: hidden;
+    background: transparent;
+    pointer-events: none;
+}
+.green-tooltip-arrow-placement-top{
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: -5px;
+}
+.green-tooltip-arrow-placement-bottom{
+    left: 50%;
+    transform: translateX(-50%);
+    top: -5px;
+}
+.green-tooltip-arrow:before {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: block;
+    width: 5px;
+    height: 5px;
+    margin: auto;
+    background-color: #fff;
+    content: "";
+    pointer-events: auto;
+}
+.green-tooltip-arrow-placement-top:before {
+     box-shadow: 3px 3px 7px rgba(0, 0, 0, .07);
+     transform: translateY(-6.53px) rotate(45deg);
+ }
+.green-tooltip-arrow-placement-bottom:before {
+    box-shadow: 3px 3px 7px rgba(0, 0, 0, .07);
+    transform: translateY(6.53px) rotate(-45deg);
+}
