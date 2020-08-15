@@ -8,7 +8,7 @@ export class GraphicLayer extends Layer {
     add(graphic) {
         this._graphics.push(graphic);
     }
-    draw(ctx, projection = new WebMercator(), extent = projection.bound) {
+    draw(ctx, projection = new WebMercator(), extent = projection.bound, zoom = 10) {
         if (this.visible) {
             this._graphics.forEach((graphic) => {
                 graphic.draw(ctx, projection, extent);

@@ -5,5 +5,5 @@ import { Bound } from "../util/bound";
 export declare class GraphicLayer extends Layer {
     private _graphics;
     add(graphic: Graphic): void;
-    draw(ctx: CanvasRenderingContext2D, projection?: Projection, extent?: Bound): void;
+    draw(ctx: CanvasRenderingContext2D, projection?: Projection, extent?: Bound, zoom?: number): void;
 }

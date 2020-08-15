@@ -146,6 +146,21 @@ export class SimpleMarkerSymbol extends PointSymbol {
         return screenX >= (anchorX + this.offsetX) && screenX <= (anchorX + this.offsetX + this.width) && screenY >= (anchorY + this.offsetY) && screenY <= (anchorY + this.offsetY + this.height);
     }
 }
+export class SimpleTextSymbol extends Symbol {
+    constructor() {
+        super(...arguments);
+        this.lineWidth = 3;
+        this.strokeStyle = "#ff0000"; //#ffffff
+        this.fillStyle = "#ffffff"; //#ffffff
+        this.offsetX = 0;
+        this.offsetY = 1;
+        this.padding = 5;
+        this.fontColor = "#ff0000";
+        this.fontSize = 12;
+        this.fontFamily = "YaHei";
+        this.fontWeight = "Bold";
+    }
+}
 export class ClusterSymbol extends PointSymbol {
     constructor(count) {
         super();
@@ -197,13 +212,13 @@ export class ClusterSymbol extends PointSymbol {
         ctx.fillStyle = this.outerFillStyle;
         ctx.lineWidth = this.lineWidth;
         ctx.beginPath(); //Start path
-        //keep size
+        //keep size 画外圈
         ctx.arc(screenX, screenY, this.outer, 0, Math.PI * 2, true);
         ctx.fill();
         ctx.stroke();
         ctx.fillStyle = this.innerFillStyle;
         ctx.beginPath(); //Start path
-        //keep size
+        //keep size 画内圈
         ctx.arc(screenX, screenY, this.inner, 0, Math.PI * 2, true);
         ctx.fill();
         ctx.stroke();

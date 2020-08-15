@@ -7,6 +7,8 @@ export * from './geometry/geometry';
 export * from './geometry/point';
 export * from './geometry/polyline';
 export * from './geometry/polygon';
+export * from './label/collision';
+export * from './label/label';
 export * from './layer/layer';
 export * from './layer/graphic-layer';
 export * from './layer/feature-layer';

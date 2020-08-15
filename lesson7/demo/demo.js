@@ -10,6 +10,7 @@ import {
     CategoryRendererItem,
     Field,
     FieldType,
+    Label, NullCollision, SimpleCollision, CoverCollision, SimpleTextSymbol,
     Graphic, SimpleMarkerSymbol, Feature, LatLngType, GCJ02
 } from "../dist";
 
@@ -44,8 +45,17 @@ window.load = () => {
         const featureLayer = new FeatureLayer();
         featureLayer.featureClass = featureClass;
         const renderer = new SimpleRenderer();
-        featureLayer.cluster = true;
+        const label = new Label();
+        const symbol = new SimpleTextSymbol();
+        const field2 = new Field();
+        field2.name = "NAME";
+        field2.type = FieldType.String;
+        label.field = field2;
+        label.symbol = symbol;
+        label.collision = new NullCollision();
         featureLayer.renderer = renderer;
+        featureLayer.label = label;
+        featureLayer.labeled = true;
         featureLayer.zoom = [13, 20];
         map.addLayer(featureLayer);
 

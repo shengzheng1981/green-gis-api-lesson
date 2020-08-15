@@ -1,6 +1,6 @@
 import { Bound } from "../util/bound";
 import { Projection } from "../projection/projection";
-import { Symbol } from "../symbol/symbol";
+import { SimpleTextSymbol, Symbol } from "../symbol/symbol";
 export declare enum CoordinateType {
     Latlng = 1,
     Projection = 2,
@@ -22,4 +22,6 @@ export declare class Geometry {
     getCenter(type?: CoordinateType, projection?: Projection): void;
     getBound(projection?: Projection): Bound;
     distance(geometry: Geometry, type: CoordinateType, ctx: CanvasRenderingContext2D, projection?: Projection): number;
+    label(text: string, ctx: CanvasRenderingContext2D, projection?: Projection, symbol?: SimpleTextSymbol): void;
+    measure(text: string, ctx: CanvasRenderingContext2D, projection?: Projection, symbol?: SimpleTextSymbol): Bound;
 }

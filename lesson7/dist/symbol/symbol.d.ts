@@ -38,6 +38,18 @@ export declare class SimpleMarkerSymbol extends PointSymbol {
     draw(ctx: CanvasRenderingContext2D, screenX: any, screenY: any): Promise<void>;
     contain(anchorX: any, anchorY: any, screenX: any, screenY: any): boolean;
 }
+export declare class SimpleTextSymbol extends Symbol {
+    lineWidth: number;
+    strokeStyle: string;
+    fillStyle: string;
+    offsetX: number;
+    offsetY: number;
+    padding: number;
+    fontColor: string;
+    fontSize: number;
+    fontFamily: string;
+    fontWeight: string;
+}
 export declare class ClusterSymbol extends PointSymbol {
     private _count;
     radius: number;

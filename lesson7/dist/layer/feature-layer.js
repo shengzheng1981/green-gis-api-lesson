@@ -10,6 +10,8 @@ export class FeatureLayer extends Layer {
     constructor() {
         super(...arguments);
         this._zoom = [3, 20];
+        //是否显示标注
+        this.labeled = false;
         //是否聚合
         this.cluster = false;
     }
@@ -18,6 +20,9 @@ export class FeatureLayer extends Layer {
     }
     set featureClass(value) {
         this._featureClass = value;
+    }
+    set label(value) {
+        this._label = value;
     }
     set renderer(value) {
         this._renderer = value;
@@ -46,7 +51,7 @@ export class FeatureLayer extends Layer {
                         }
                         return acc;
                     }
-                }, []); // {feature, count}
+                }, []); // [{feature, count}]
                 cluster.forEach((item) => {
                     if (item.count == 1) {
                         item.feature.draw(ctx, projection, extent, this._getSymbol(item.feature));
@@ -61,6 +66,12 @@ export class FeatureLayer extends Layer {
                     feature.draw(ctx, projection, extent, this._getSymbol(feature));
                 });
             }
+        }
+    }
+    drawLabel(ctx, projection = new WebMercator(), extent = projection.bound, zoom = 10) {
+        if (this.visible && !this.cluster && this._zoom[0] <= zoom && this._zoom[1] >= zoom) {
+            const features = this._featureClass.features.filter((feature) => feature.intersect(projection, extent));
+            this._label.draw(features, ctx, projection);
         }
     }
     _getSymbol(feature) {

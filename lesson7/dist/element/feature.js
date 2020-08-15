@@ -1,4 +1,4 @@
-import { SimplePointSymbol } from "../symbol/symbol";
+import { SimplePointSymbol, SimpleTextSymbol } from "../symbol/symbol";
 import { WebMercator } from "../projection/web-mercator";
 export class Feature {
     constructor(geometry, properties, symbol) {
@@ -22,6 +22,12 @@ export class Feature {
     get bound() {
         return this._geometry ? this._geometry.bound : null;
     }
+    get text() {
+        return this._text;
+    }
+    set text(value) {
+        this._text = value;
+    }
     draw(ctx, projection = new WebMercator(), extent = projection.bound, symbol = new SimplePointSymbol()) {
         if (this.visible)
             this._geometry.draw(ctx, projection, extent, (this._symbol || symbol));
@@ -29,5 +35,9 @@ export class Feature {
     intersect(projection = new WebMercator(), extent = projection.bound) {
         if (this.visible)
             return this._geometry.intersect(projection, extent);
+    }
+    label(field, ctx, projection = new WebMercator(), symbol = new SimpleTextSymbol()) {
+        if (this.visible)
+            this._geometry.label(this._properties[field.name], ctx, projection, this._text || symbol);
     }
 }

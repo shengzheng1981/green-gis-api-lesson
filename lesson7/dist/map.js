@@ -1,5 +1,6 @@
 import { Bound } from "./util/bound";
 import { WebMercator } from "./projection/web-mercator";
+import { FeatureLayer } from "./layer/feature-layer";
 import { GraphicLayer } from "./layer/graphic-layer";
 export class Map {
     constructor(id) {
@@ -121,9 +122,12 @@ export class Map {
         this._ctx.restore();
         this.updateExtent();
         //this._geometries.forEach(geometry => geometry.draw(this._ctx));
-        this._defaultGraphicLayer.draw(this._ctx, this._projection, this._extent);
+        this._defaultGraphicLayer.draw(this._ctx, this._projection, this._extent, this._zoom);
         this._layers.forEach(layer => {
-            layer.draw(this._ctx, this._projection, this._extent);
+            layer.draw(this._ctx, this._projection, this._extent, this._zoom);
+        });
+        this._layers.filter(layer => layer instanceof FeatureLayer && layer.labeled).forEach((layer) => {
+            layer.drawLabel(this._ctx, this._projection, this._extent, this._zoom);
         });
     }
     clear() {

@@ -227,6 +227,12 @@ class Feature {
     get bound() {
         return this._geometry ? this._geometry.bound : null;
     }
+    get text() {
+        return this._text;
+    }
+    set text(value) {
+        this._text = value;
+    }
     draw(ctx, projection = new _projection_web_mercator__WEBPACK_IMPORTED_MODULE_1__["WebMercator"](), extent = projection.bound, symbol = new _symbol_symbol__WEBPACK_IMPORTED_MODULE_0__["SimplePointSymbol"]()) {
         if (this.visible)
             this._geometry.draw(ctx, projection, extent, (this._symbol || symbol));
@@ -234,6 +240,10 @@ class Feature {
     intersect(projection = new _projection_web_mercator__WEBPACK_IMPORTED_MODULE_1__["WebMercator"](), extent = projection.bound) {
         if (this.visible)
             return this._geometry.intersect(projection, extent);
+    }
+    label(field, ctx, projection = new _projection_web_mercator__WEBPACK_IMPORTED_MODULE_1__["WebMercator"](), symbol = new _symbol_symbol__WEBPACK_IMPORTED_MODULE_0__["SimpleTextSymbol"]()) {
+        if (this.visible)
+            this._geometry.label(this._properties[field.name], ctx, projection, this._text || symbol);
     }
 }
 
@@ -282,8 +292,10 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "CoordinateType", function() { return CoordinateType; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "GeometryType", function() { return GeometryType; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Geometry", function() { return Geometry; });
-/* harmony import */ var _symbol_symbol__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../symbol/symbol */ "../dist/symbol/symbol.js");
-/* harmony import */ var _projection_web_mercator__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../projection/web-mercator */ "../dist/projection/web-mercator.js");
+/* harmony import */ var _util_bound__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../util/bound */ "../dist/util/bound.js");
+/* harmony import */ var _symbol_symbol__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../symbol/symbol */ "../dist/symbol/symbol.js");
+/* harmony import */ var _projection_web_mercator__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../projection/web-mercator */ "../dist/projection/web-mercator.js");
+
 
 
 var CoordinateType;
@@ -304,22 +316,22 @@ class Geometry {
     }
     project(projection) { }
     ;
-    draw(ctx, projection = new _projection_web_mercator__WEBPACK_IMPORTED_MODULE_1__["WebMercator"](), extent = projection.bound, symbol = new _symbol_symbol__WEBPACK_IMPORTED_MODULE_0__["SimplePointSymbol"]()) { }
+    draw(ctx, projection = new _projection_web_mercator__WEBPACK_IMPORTED_MODULE_2__["WebMercator"](), extent = projection.bound, symbol = new _symbol_symbol__WEBPACK_IMPORTED_MODULE_1__["SimplePointSymbol"]()) { }
     ;
-    intersect(projection = new _projection_web_mercator__WEBPACK_IMPORTED_MODULE_1__["WebMercator"](), extent = projection.bound) {
+    intersect(projection = new _projection_web_mercator__WEBPACK_IMPORTED_MODULE_2__["WebMercator"](), extent = projection.bound) {
         if (!this._projected)
             this.project(projection);
         return extent.intersect(this._bound);
     }
-    getCenter(type = CoordinateType.Latlng, projection = new _projection_web_mercator__WEBPACK_IMPORTED_MODULE_1__["WebMercator"]()) { }
+    getCenter(type = CoordinateType.Latlng, projection = new _projection_web_mercator__WEBPACK_IMPORTED_MODULE_2__["WebMercator"]()) { }
     ;
-    getBound(projection = new _projection_web_mercator__WEBPACK_IMPORTED_MODULE_1__["WebMercator"]()) {
+    getBound(projection = new _projection_web_mercator__WEBPACK_IMPORTED_MODULE_2__["WebMercator"]()) {
         if (!this._projected)
             this.project(projection);
         return this._bound;
     }
     ;
-    distance(geometry, type, ctx, projection = new _projection_web_mercator__WEBPACK_IMPORTED_MODULE_1__["WebMercator"]()) {
+    distance(geometry, type, ctx, projection = new _projection_web_mercator__WEBPACK_IMPORTED_MODULE_2__["WebMercator"]()) {
         const center = this.getCenter(type == CoordinateType.Screen ? CoordinateType.Projection : type, projection);
         const point = geometry.getCenter(type == CoordinateType.Screen ? CoordinateType.Projection : type, projection);
         if (type == CoordinateType.Screen) {
@@ -328,10 +340,60 @@ class Geometry {
             const screenX2 = (matrix.a * point[0] + matrix.e), screenY2 = (matrix.d * point[1] + matrix.f);
             return Math.sqrt((screenX2 - screenX1) * (screenX2 - screenX1) + (screenY2 - screenY1) * (screenY2 - screenY1));
         }
-        else {
+        else if (type == CoordinateType.Projection) {
             return Math.sqrt((point[0] - center[0]) * (point[0] - center[0]) + (point[1] - center[1]) * (point[1] - center[1]));
         }
     }
+    label(text, ctx, projection = new _projection_web_mercator__WEBPACK_IMPORTED_MODULE_2__["WebMercator"](), symbol = new _symbol_symbol__WEBPACK_IMPORTED_MODULE_1__["SimpleTextSymbol"]()) {
+        if (!text)
+            return;
+        if (!this._projected)
+            this.project(projection);
+        ctx.save();
+        ctx.strokeStyle = symbol.strokeStyle;
+        ctx.fillStyle = symbol.fillStyle;
+        ctx.lineWidth = symbol.lineWidth;
+        ctx.lineJoin = "round";
+        ctx.font = symbol.fontSize + "px/1 " + symbol.fontFamily + " " + symbol.fontWeight;
+        const center = this.getCenter(CoordinateType.Projection, projection);
+        const matrix = ctx.getTransform();
+        //keep pixel
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        const array = text.split("/r/n");
+        let widths = array.map(str => ctx.measureText(str).width + symbol.padding * 2);
+        let width = Math.max(...widths);
+        let height = symbol.fontSize * array.length + symbol.padding * 2 + symbol.padding * (array.length - 1);
+        const screenX = (matrix.a * center[0] + matrix.e);
+        const screenY = (matrix.d * center[1] + matrix.f);
+        ctx.strokeRect(screenX + symbol.offsetX - symbol.padding, screenY + symbol.offsetY - symbol.padding, width, height);
+        ctx.fillRect(screenX + symbol.offsetX - symbol.padding, screenY + symbol.offsetY - symbol.padding, width, height);
+        ctx.textBaseline = "top";
+        ctx.fillStyle = symbol.fontColor;
+        array.forEach((str, index) => {
+            ctx.fillText(str, screenX + symbol.offsetX + (width - widths[index]) / 2, screenY + symbol.offsetY + index * (symbol.fontSize + symbol.padding));
+        });
+        ctx.restore();
+    }
+    ;
+    measure(text, ctx, projection = new _projection_web_mercator__WEBPACK_IMPORTED_MODULE_2__["WebMercator"](), symbol = new _symbol_symbol__WEBPACK_IMPORTED_MODULE_1__["SimpleTextSymbol"]()) {
+        if (!text)
+            return;
+        ctx.save();
+        ctx.font = symbol.fontSize + "px/1 " + symbol.fontFamily + " " + symbol.fontWeight;
+        const center = this.getCenter(CoordinateType.Projection, projection);
+        const matrix = ctx.getTransform();
+        //keep pixel
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        const array = text.split("/r/n");
+        let widths = array.map(str => ctx.measureText(str).width + symbol.padding * 2);
+        let width = Math.max(...widths);
+        let height = symbol.fontSize * array.length + symbol.padding * 2 + symbol.padding * (array.length - 1);
+        const screenX = (matrix.a * center[0] + matrix.e);
+        const screenY = (matrix.d * center[1] + matrix.f);
+        ctx.restore();
+        return new _util_bound__WEBPACK_IMPORTED_MODULE_0__["Bound"](screenX + symbol.offsetX - symbol.padding, screenY + symbol.offsetY - symbol.padding, screenX + symbol.offsetX - symbol.padding + width, screenY + symbol.offsetY - symbol.padding + height);
+    }
+    ;
 }
 
 
@@ -666,7 +728,7 @@ Polyline.TOLERANCE = 4; //screen pixel
 /*!************************!*\
   !*** ../dist/index.js ***!
   \************************/
-/*! exports provided: Map, FeatureClass, FieldType, Field, Graphic, Feature, CoordinateType, GeometryType, Geometry, Point, Polyline, Polygon, Layer, GraphicLayer, FeatureLayer, LatLngType, Projection, WebMercator, BD09, GCJ02, Symbol, PointSymbol, LineSymbol, FillSymbol, SimplePointSymbol, SimpleLineSymbol, SimpleFillSymbol, SimpleMarkerSymbol, ClusterSymbol, Renderer, SimpleRenderer, CategoryRendererItem, CategoryRenderer, ClassRendererItem, ClassRenderer, Bound */
+/*! exports provided: Map, FeatureClass, FieldType, Field, Graphic, Feature, CoordinateType, GeometryType, Geometry, Point, Polyline, Polygon, Collision, NullCollision, SimpleCollision, CoverCollision, Label, Layer, GraphicLayer, FeatureLayer, LatLngType, Projection, WebMercator, BD09, GCJ02, Symbol, PointSymbol, LineSymbol, FillSymbol, SimplePointSymbol, SimpleLineSymbol, SimpleFillSymbol, SimpleMarkerSymbol, SimpleTextSymbol, ClusterSymbol, Renderer, SimpleRenderer, CategoryRendererItem, CategoryRenderer, ClassRendererItem, ClassRenderer, Bound */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -704,82 +766,80 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _geometry_polygon__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./geometry/polygon */ "../dist/geometry/polygon.js");
 /* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "Polygon", function() { return _geometry_polygon__WEBPACK_IMPORTED_MODULE_8__["Polygon"]; });
 
-/* harmony import */ var _layer_layer__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./layer/layer */ "../dist/layer/layer.js");
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "Layer", function() { return _layer_layer__WEBPACK_IMPORTED_MODULE_9__["Layer"]; });
+/* harmony import */ var _label_collision__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./label/collision */ "../dist/label/collision.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "Collision", function() { return _label_collision__WEBPACK_IMPORTED_MODULE_9__["Collision"]; });
 
-/* harmony import */ var _layer_graphic_layer__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ./layer/graphic-layer */ "../dist/layer/graphic-layer.js");
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "GraphicLayer", function() { return _layer_graphic_layer__WEBPACK_IMPORTED_MODULE_10__["GraphicLayer"]; });
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "NullCollision", function() { return _label_collision__WEBPACK_IMPORTED_MODULE_9__["NullCollision"]; });
 
-/* harmony import */ var _layer_feature_layer__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! ./layer/feature-layer */ "../dist/layer/feature-layer.js");
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "FeatureLayer", function() { return _layer_feature_layer__WEBPACK_IMPORTED_MODULE_11__["FeatureLayer"]; });
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "SimpleCollision", function() { return _label_collision__WEBPACK_IMPORTED_MODULE_9__["SimpleCollision"]; });
 
-/* harmony import */ var _projection_projection__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! ./projection/projection */ "../dist/projection/projection.js");
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "LatLngType", function() { return _projection_projection__WEBPACK_IMPORTED_MODULE_12__["LatLngType"]; });
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "CoverCollision", function() { return _label_collision__WEBPACK_IMPORTED_MODULE_9__["CoverCollision"]; });
 
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "Projection", function() { return _projection_projection__WEBPACK_IMPORTED_MODULE_12__["Projection"]; });
+/* harmony import */ var _label_label__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ./label/label */ "../dist/label/label.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "Label", function() { return _label_label__WEBPACK_IMPORTED_MODULE_10__["Label"]; });
 
-/* harmony import */ var _projection_web_mercator__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! ./projection/web-mercator */ "../dist/projection/web-mercator.js");
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "WebMercator", function() { return _projection_web_mercator__WEBPACK_IMPORTED_MODULE_13__["WebMercator"]; });
+/* harmony import */ var _layer_layer__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! ./layer/layer */ "../dist/layer/layer.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "Layer", function() { return _layer_layer__WEBPACK_IMPORTED_MODULE_11__["Layer"]; });
 
-/* harmony import */ var _projection_bd09__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! ./projection/bd09 */ "../dist/projection/bd09.js");
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "BD09", function() { return _projection_bd09__WEBPACK_IMPORTED_MODULE_14__["BD09"]; });
+/* harmony import */ var _layer_graphic_layer__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! ./layer/graphic-layer */ "../dist/layer/graphic-layer.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "GraphicLayer", function() { return _layer_graphic_layer__WEBPACK_IMPORTED_MODULE_12__["GraphicLayer"]; });
 
-/* harmony import */ var _projection_gcj02__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(/*! ./projection/gcj02 */ "../dist/projection/gcj02.js");
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "GCJ02", function() { return _projection_gcj02__WEBPACK_IMPORTED_MODULE_15__["GCJ02"]; });
+/* harmony import */ var _layer_feature_layer__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! ./layer/feature-layer */ "../dist/layer/feature-layer.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "FeatureLayer", function() { return _layer_feature_layer__WEBPACK_IMPORTED_MODULE_13__["FeatureLayer"]; });
 
-/* harmony import */ var _symbol_symbol__WEBPACK_IMPORTED_MODULE_16__ = __webpack_require__(/*! ./symbol/symbol */ "../dist/symbol/symbol.js");
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "Symbol", function() { return _symbol_symbol__WEBPACK_IMPORTED_MODULE_16__["Symbol"]; });
+/* harmony import */ var _projection_projection__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! ./projection/projection */ "../dist/projection/projection.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "LatLngType", function() { return _projection_projection__WEBPACK_IMPORTED_MODULE_14__["LatLngType"]; });
 
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "PointSymbol", function() { return _symbol_symbol__WEBPACK_IMPORTED_MODULE_16__["PointSymbol"]; });
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "Projection", function() { return _projection_projection__WEBPACK_IMPORTED_MODULE_14__["Projection"]; });
 
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "LineSymbol", function() { return _symbol_symbol__WEBPACK_IMPORTED_MODULE_16__["LineSymbol"]; });
+/* harmony import */ var _projection_web_mercator__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(/*! ./projection/web-mercator */ "../dist/projection/web-mercator.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "WebMercator", function() { return _projection_web_mercator__WEBPACK_IMPORTED_MODULE_15__["WebMercator"]; });
 
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "FillSymbol", function() { return _symbol_symbol__WEBPACK_IMPORTED_MODULE_16__["FillSymbol"]; });
+/* harmony import */ var _projection_bd09__WEBPACK_IMPORTED_MODULE_16__ = __webpack_require__(/*! ./projection/bd09 */ "../dist/projection/bd09.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "BD09", function() { return _projection_bd09__WEBPACK_IMPORTED_MODULE_16__["BD09"]; });
 
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "SimplePointSymbol", function() { return _symbol_symbol__WEBPACK_IMPORTED_MODULE_16__["SimplePointSymbol"]; });
+/* harmony import */ var _projection_gcj02__WEBPACK_IMPORTED_MODULE_17__ = __webpack_require__(/*! ./projection/gcj02 */ "../dist/projection/gcj02.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "GCJ02", function() { return _projection_gcj02__WEBPACK_IMPORTED_MODULE_17__["GCJ02"]; });
 
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "SimpleLineSymbol", function() { return _symbol_symbol__WEBPACK_IMPORTED_MODULE_16__["SimpleLineSymbol"]; });
+/* harmony import */ var _symbol_symbol__WEBPACK_IMPORTED_MODULE_18__ = __webpack_require__(/*! ./symbol/symbol */ "../dist/symbol/symbol.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "Symbol", function() { return _symbol_symbol__WEBPACK_IMPORTED_MODULE_18__["Symbol"]; });
 
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "SimpleFillSymbol", function() { return _symbol_symbol__WEBPACK_IMPORTED_MODULE_16__["SimpleFillSymbol"]; });
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "PointSymbol", function() { return _symbol_symbol__WEBPACK_IMPORTED_MODULE_18__["PointSymbol"]; });
 
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "SimpleMarkerSymbol", function() { return _symbol_symbol__WEBPACK_IMPORTED_MODULE_16__["SimpleMarkerSymbol"]; });
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "LineSymbol", function() { return _symbol_symbol__WEBPACK_IMPORTED_MODULE_18__["LineSymbol"]; });
 
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "ClusterSymbol", function() { return _symbol_symbol__WEBPACK_IMPORTED_MODULE_16__["ClusterSymbol"]; });
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "FillSymbol", function() { return _symbol_symbol__WEBPACK_IMPORTED_MODULE_18__["FillSymbol"]; });
 
-/* harmony import */ var _renderer_renderer__WEBPACK_IMPORTED_MODULE_17__ = __webpack_require__(/*! ./renderer/renderer */ "../dist/renderer/renderer.js");
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "Renderer", function() { return _renderer_renderer__WEBPACK_IMPORTED_MODULE_17__["Renderer"]; });
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "SimplePointSymbol", function() { return _symbol_symbol__WEBPACK_IMPORTED_MODULE_18__["SimplePointSymbol"]; });
 
-/* harmony import */ var _renderer_simple_renderer__WEBPACK_IMPORTED_MODULE_18__ = __webpack_require__(/*! ./renderer/simple-renderer */ "../dist/renderer/simple-renderer.js");
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "SimpleRenderer", function() { return _renderer_simple_renderer__WEBPACK_IMPORTED_MODULE_18__["SimpleRenderer"]; });
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "SimpleLineSymbol", function() { return _symbol_symbol__WEBPACK_IMPORTED_MODULE_18__["SimpleLineSymbol"]; });
 
-/* harmony import */ var _renderer_category_renderer__WEBPACK_IMPORTED_MODULE_19__ = __webpack_require__(/*! ./renderer/category-renderer */ "../dist/renderer/category-renderer.js");
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "CategoryRendererItem", function() { return _renderer_category_renderer__WEBPACK_IMPORTED_MODULE_19__["CategoryRendererItem"]; });
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "SimpleFillSymbol", function() { return _symbol_symbol__WEBPACK_IMPORTED_MODULE_18__["SimpleFillSymbol"]; });
 
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "CategoryRenderer", function() { return _renderer_category_renderer__WEBPACK_IMPORTED_MODULE_19__["CategoryRenderer"]; });
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "SimpleMarkerSymbol", function() { return _symbol_symbol__WEBPACK_IMPORTED_MODULE_18__["SimpleMarkerSymbol"]; });
 
-/* harmony import */ var _renderer_class_renderer__WEBPACK_IMPORTED_MODULE_20__ = __webpack_require__(/*! ./renderer/class-renderer */ "../dist/renderer/class-renderer.js");
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "ClassRendererItem", function() { return _renderer_class_renderer__WEBPACK_IMPORTED_MODULE_20__["ClassRendererItem"]; });
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "SimpleTextSymbol", function() { return _symbol_symbol__WEBPACK_IMPORTED_MODULE_18__["SimpleTextSymbol"]; });
 
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "ClassRenderer", function() { return _renderer_class_renderer__WEBPACK_IMPORTED_MODULE_20__["ClassRenderer"]; });
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "ClusterSymbol", function() { return _symbol_symbol__WEBPACK_IMPORTED_MODULE_18__["ClusterSymbol"]; });
 
-/* harmony import */ var _util_bound__WEBPACK_IMPORTED_MODULE_21__ = __webpack_require__(/*! ./util/bound */ "../dist/util/bound.js");
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "Bound", function() { return _util_bound__WEBPACK_IMPORTED_MODULE_21__["Bound"]; });
+/* harmony import */ var _renderer_renderer__WEBPACK_IMPORTED_MODULE_19__ = __webpack_require__(/*! ./renderer/renderer */ "../dist/renderer/renderer.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "Renderer", function() { return _renderer_renderer__WEBPACK_IMPORTED_MODULE_19__["Renderer"]; });
 
+/* harmony import */ var _renderer_simple_renderer__WEBPACK_IMPORTED_MODULE_20__ = __webpack_require__(/*! ./renderer/simple-renderer */ "../dist/renderer/simple-renderer.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "SimpleRenderer", function() { return _renderer_simple_renderer__WEBPACK_IMPORTED_MODULE_20__["SimpleRenderer"]; });
 
+/* harmony import */ var _renderer_category_renderer__WEBPACK_IMPORTED_MODULE_21__ = __webpack_require__(/*! ./renderer/category-renderer */ "../dist/renderer/category-renderer.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "CategoryRendererItem", function() { return _renderer_category_renderer__WEBPACK_IMPORTED_MODULE_21__["CategoryRendererItem"]; });
 
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "CategoryRenderer", function() { return _renderer_category_renderer__WEBPACK_IMPORTED_MODULE_21__["CategoryRenderer"]; });
 
+/* harmony import */ var _renderer_class_renderer__WEBPACK_IMPORTED_MODULE_22__ = __webpack_require__(/*! ./renderer/class-renderer */ "../dist/renderer/class-renderer.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "ClassRendererItem", function() { return _renderer_class_renderer__WEBPACK_IMPORTED_MODULE_22__["ClassRendererItem"]; });
 
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "ClassRenderer", function() { return _renderer_class_renderer__WEBPACK_IMPORTED_MODULE_22__["ClassRenderer"]; });
 
-
-
-
-
-
-
-
-
-
-
+/* harmony import */ var _util_bound__WEBPACK_IMPORTED_MODULE_23__ = __webpack_require__(/*! ./util/bound */ "../dist/util/bound.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "Bound", function() { return _util_bound__WEBPACK_IMPORTED_MODULE_23__["Bound"]; });
 
 
 
@@ -787,6 +847,126 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/***/ }),
+
+/***/ "../dist/label/collision.js":
+/*!**********************************!*\
+  !*** ../dist/label/collision.js ***!
+  \**********************************/
+/*! exports provided: Collision, NullCollision, SimpleCollision, CoverCollision */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Collision", function() { return Collision; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "NullCollision", function() { return NullCollision; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "SimpleCollision", function() { return SimpleCollision; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "CoverCollision", function() { return CoverCollision; });
+/* harmony import */ var _geometry_geometry__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../geometry/geometry */ "../dist/geometry/geometry.js");
+/* harmony import */ var _projection_web_mercator__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../projection/web-mercator */ "../dist/projection/web-mercator.js");
+
+
+//碰撞冲突
+class Collision {
+    test(features, field, symbol, ctx, projection = new _projection_web_mercator__WEBPACK_IMPORTED_MODULE_1__["WebMercator"]()) { return []; }
+}
+class NullCollision {
+    test(features, field, symbol, ctx, projection = new _projection_web_mercator__WEBPACK_IMPORTED_MODULE_1__["WebMercator"]()) {
+        return features;
+    }
+}
+//简单碰撞冲突  距离判断
+class SimpleCollision {
+    constructor() {
+        this.distance = 50; //pixel
+    }
+    test(features, field, symbol, ctx, projection = new _projection_web_mercator__WEBPACK_IMPORTED_MODULE_1__["WebMercator"]()) {
+        return features.reduce((acc, cur) => {
+            const item = acc.find((item) => {
+                const distance = cur.geometry.distance(item.geometry, _geometry_geometry__WEBPACK_IMPORTED_MODULE_0__["CoordinateType"].Screen, ctx, projection);
+                return distance <= this.distance;
+            });
+            if (!item)
+                acc.push(cur);
+            return acc;
+        }, []); // [feature]
+    }
+}
+//叠盖碰撞冲突  叠盖判断
+class CoverCollision {
+    constructor() {
+        //drawn label bounds
+        this._bounds = [];
+    }
+    test(features, field, symbol, ctx, projection = new _projection_web_mercator__WEBPACK_IMPORTED_MODULE_1__["WebMercator"]()) {
+        if (!field || !symbol)
+            return [];
+        this._bounds = [];
+        return features.reduce((acc, cur) => {
+            const bound = cur.geometry.measure(cur.properties[field.name], ctx, projection, symbol);
+            if (bound) {
+                const item = this._bounds.find(item => item.intersect(bound));
+                if (!item) {
+                    acc.push(cur);
+                    this._bounds.push(bound);
+                }
+            }
+            return acc;
+        }, []); // [feature]
+    }
+}
+
+
+/***/ }),
+
+/***/ "../dist/label/label.js":
+/*!******************************!*\
+  !*** ../dist/label/label.js ***!
+  \******************************/
+/*! exports provided: Label */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Label", function() { return Label; });
+/* harmony import */ var _symbol_symbol__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../symbol/symbol */ "../dist/symbol/symbol.js");
+/* harmony import */ var _collision__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./collision */ "../dist/label/collision.js");
+/* harmony import */ var _projection_web_mercator__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../projection/web-mercator */ "../dist/projection/web-mercator.js");
+
+
+
+class Label {
+    constructor() {
+        this.symbol = new _symbol_symbol__WEBPACK_IMPORTED_MODULE_0__["SimpleTextSymbol"]();
+        this.collision = new _collision__WEBPACK_IMPORTED_MODULE_1__["SimpleCollision"]();
+    }
+    draw(features, ctx, projection = new _projection_web_mercator__WEBPACK_IMPORTED_MODULE_2__["WebMercator"]()) {
+        const remain = this.collision.test(features, this.field, this.symbol, ctx, projection);
+        remain.forEach((feature) => {
+            feature.label(this.field, ctx, projection, this.symbol);
+        });
+    }
+}
 
 
 /***/ }),
@@ -821,6 +1001,8 @@ class FeatureLayer extends _layer__WEBPACK_IMPORTED_MODULE_0__["Layer"] {
     constructor() {
         super(...arguments);
         this._zoom = [3, 20];
+        //是否显示标注
+        this.labeled = false;
         //是否聚合
         this.cluster = false;
     }
@@ -829,6 +1011,9 @@ class FeatureLayer extends _layer__WEBPACK_IMPORTED_MODULE_0__["Layer"] {
     }
     set featureClass(value) {
         this._featureClass = value;
+    }
+    set label(value) {
+        this._label = value;
     }
     set renderer(value) {
         this._renderer = value;
@@ -857,7 +1042,7 @@ class FeatureLayer extends _layer__WEBPACK_IMPORTED_MODULE_0__["Layer"] {
                         }
                         return acc;
                     }
-                }, []); // {feature, count}
+                }, []); // [{feature, count}]
                 cluster.forEach((item) => {
                     if (item.count == 1) {
                         item.feature.draw(ctx, projection, extent, this._getSymbol(item.feature));
@@ -872,6 +1057,12 @@ class FeatureLayer extends _layer__WEBPACK_IMPORTED_MODULE_0__["Layer"] {
                     feature.draw(ctx, projection, extent, this._getSymbol(feature));
                 });
             }
+        }
+    }
+    drawLabel(ctx, projection = new _projection_web_mercator__WEBPACK_IMPORTED_MODULE_1__["WebMercator"](), extent = projection.bound, zoom = 10) {
+        if (this.visible && !this.cluster && this._zoom[0] <= zoom && this._zoom[1] >= zoom) {
+            const features = this._featureClass.features.filter((feature) => feature.intersect(projection, extent));
+            this._label.draw(features, ctx, projection);
         }
     }
     _getSymbol(feature) {
@@ -916,7 +1107,7 @@ class GraphicLayer extends _layer__WEBPACK_IMPORTED_MODULE_0__["Layer"] {
     add(graphic) {
         this._graphics.push(graphic);
     }
-    draw(ctx, projection = new _projection_web_mercator__WEBPACK_IMPORTED_MODULE_1__["WebMercator"](), extent = projection.bound) {
+    draw(ctx, projection = new _projection_web_mercator__WEBPACK_IMPORTED_MODULE_1__["WebMercator"](), extent = projection.bound, zoom = 10) {
         if (this.visible) {
             this._graphics.forEach((graphic) => {
                 graphic.draw(ctx, projection, extent);
@@ -969,7 +1160,9 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Map", function() { return Map; });
 /* harmony import */ var _util_bound__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./util/bound */ "../dist/util/bound.js");
 /* harmony import */ var _projection_web_mercator__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./projection/web-mercator */ "../dist/projection/web-mercator.js");
-/* harmony import */ var _layer_graphic_layer__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./layer/graphic-layer */ "../dist/layer/graphic-layer.js");
+/* harmony import */ var _layer_feature_layer__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./layer/feature-layer */ "../dist/layer/feature-layer.js");
+/* harmony import */ var _layer_graphic_layer__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./layer/graphic-layer */ "../dist/layer/graphic-layer.js");
+
 
 
 
@@ -987,7 +1180,7 @@ class Map {
             }
         };
         //private _geometries: Geometry[] = [];
-        this._defaultGraphicLayer = new _layer_graphic_layer__WEBPACK_IMPORTED_MODULE_2__["GraphicLayer"]();
+        this._defaultGraphicLayer = new _layer_graphic_layer__WEBPACK_IMPORTED_MODULE_3__["GraphicLayer"]();
         this._layers = [];
         //地图缩放等级
         this._zoom = 1;
@@ -1093,9 +1286,12 @@ class Map {
         this._ctx.restore();
         this.updateExtent();
         //this._geometries.forEach(geometry => geometry.draw(this._ctx));
-        this._defaultGraphicLayer.draw(this._ctx, this._projection, this._extent);
+        this._defaultGraphicLayer.draw(this._ctx, this._projection, this._extent, this._zoom);
         this._layers.forEach(layer => {
-            layer.draw(this._ctx, this._projection, this._extent);
+            layer.draw(this._ctx, this._projection, this._extent, this._zoom);
+        });
+        this._layers.filter(layer => layer instanceof _layer_feature_layer__WEBPACK_IMPORTED_MODULE_2__["FeatureLayer"] && layer.labeled).forEach((layer) => {
+            layer.drawLabel(this._ctx, this._projection, this._extent, this._zoom);
         });
     }
     clear() {
@@ -1661,7 +1857,7 @@ class SimpleRenderer {
 /*!********************************!*\
   !*** ../dist/symbol/symbol.js ***!
   \********************************/
-/*! exports provided: Symbol, PointSymbol, LineSymbol, FillSymbol, SimplePointSymbol, SimpleLineSymbol, SimpleFillSymbol, SimpleMarkerSymbol, ClusterSymbol */
+/*! exports provided: Symbol, PointSymbol, LineSymbol, FillSymbol, SimplePointSymbol, SimpleLineSymbol, SimpleFillSymbol, SimpleMarkerSymbol, SimpleTextSymbol, ClusterSymbol */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -1674,6 +1870,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "SimpleLineSymbol", function() { return SimpleLineSymbol; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "SimpleFillSymbol", function() { return SimpleFillSymbol; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "SimpleMarkerSymbol", function() { return SimpleMarkerSymbol; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "SimpleTextSymbol", function() { return SimpleTextSymbol; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ClusterSymbol", function() { return ClusterSymbol; });
 /* harmony import */ var _util_color__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../util/color */ "../dist/util/color.js");
 var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
@@ -1824,6 +2021,21 @@ class SimpleMarkerSymbol extends PointSymbol {
         return screenX >= (anchorX + this.offsetX) && screenX <= (anchorX + this.offsetX + this.width) && screenY >= (anchorY + this.offsetY) && screenY <= (anchorY + this.offsetY + this.height);
     }
 }
+class SimpleTextSymbol extends Symbol {
+    constructor() {
+        super(...arguments);
+        this.lineWidth = 3;
+        this.strokeStyle = "#ff0000"; //#ffffff
+        this.fillStyle = "#ffffff"; //#ffffff
+        this.offsetX = 0;
+        this.offsetY = 1;
+        this.padding = 5;
+        this.fontColor = "#ff0000";
+        this.fontSize = 12;
+        this.fontFamily = "YaHei";
+        this.fontWeight = "Bold";
+    }
+}
 class ClusterSymbol extends PointSymbol {
     constructor(count) {
         super();
@@ -1875,13 +2087,13 @@ class ClusterSymbol extends PointSymbol {
         ctx.fillStyle = this.outerFillStyle;
         ctx.lineWidth = this.lineWidth;
         ctx.beginPath(); //Start path
-        //keep size
+        //keep size 画外圈
         ctx.arc(screenX, screenY, this.outer, 0, Math.PI * 2, true);
         ctx.fill();
         ctx.stroke();
         ctx.fillStyle = this.innerFillStyle;
         ctx.beginPath(); //Start path
-        //keep size
+        //keep size 画内圈
         ctx.arc(screenX, screenY, this.inner, 0, Math.PI * 2, true);
         ctx.fill();
         ctx.stroke();
@@ -2059,8 +2271,17 @@ window.load = () => {
         const featureLayer = new _dist__WEBPACK_IMPORTED_MODULE_0__["FeatureLayer"]();
         featureLayer.featureClass = featureClass;
         const renderer = new _dist__WEBPACK_IMPORTED_MODULE_0__["SimpleRenderer"]();
-        featureLayer.cluster = true;
+        const label = new _dist__WEBPACK_IMPORTED_MODULE_0__["Label"]();
+        const symbol = new _dist__WEBPACK_IMPORTED_MODULE_0__["SimpleTextSymbol"]();
+        const field2 = new _dist__WEBPACK_IMPORTED_MODULE_0__["Field"]();
+        field2.name = "NAME";
+        field2.type = _dist__WEBPACK_IMPORTED_MODULE_0__["FieldType"].String;
+        label.field = field2;
+        label.symbol = symbol;
+        label.collision = new _dist__WEBPACK_IMPORTED_MODULE_0__["NullCollision"]();
         featureLayer.renderer = renderer;
+        featureLayer.label = label;
+        featureLayer.labeled = true;
         featureLayer.zoom = [13, 20];
         map.addLayer(featureLayer);
 
