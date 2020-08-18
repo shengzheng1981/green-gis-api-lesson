@@ -43,4 +43,10 @@ export class Bound {
         this._ymin = this._ymin - (s - 1) * (this._ymax - this._ymin) / 2;
         this._ymax = this._ymax + (s - 1) * (this._ymax - this._ymin) / 2;
     }
+    buffer(size) {
+        this._xmin -= size;
+        this._ymin -= size;
+        this._xmax += size;
+        this._ymax += size;
+    }
 }

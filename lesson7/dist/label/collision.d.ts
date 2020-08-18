@@ -14,5 +14,6 @@ export declare class SimpleCollision {
 }
 export declare class CoverCollision {
     private _bounds;
+    buffer: number;
     test(features: Feature[], field: Field, symbol: SimpleTextSymbol, ctx: CanvasRenderingContext2D, projection?: Projection): Feature[];
 }

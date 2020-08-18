@@ -4,6 +4,7 @@ import { WebMercator } from "../projection/web-mercator";
 export class Collision {
     test(features, field, symbol, ctx, projection = new WebMercator()) { return []; }
 }
+//无检测机制
 export class NullCollision {
     test(features, field, symbol, ctx, projection = new WebMercator()) {
         return features;
@@ -31,6 +32,7 @@ export class CoverCollision {
     constructor() {
         //drawn label bounds
         this._bounds = [];
+        this.buffer = 10; //pixel
     }
     test(features, field, symbol, ctx, projection = new WebMercator()) {
         if (!field || !symbol)
@@ -39,6 +41,7 @@ export class CoverCollision {
         return features.reduce((acc, cur) => {
             const bound = cur.geometry.measure(cur.properties[field.name], ctx, projection, symbol);
             if (bound) {
+                bound.buffer(this.buffer);
                 const item = this._bounds.find(item => item.intersect(bound));
                 if (!item) {
                     acc.push(cur);

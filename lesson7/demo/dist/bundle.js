@@ -890,6 +890,7 @@ __webpack_require__.r(__webpack_exports__);
 class Collision {
     test(features, field, symbol, ctx, projection = new _projection_web_mercator__WEBPACK_IMPORTED_MODULE_1__["WebMercator"]()) { return []; }
 }
+//无检测机制
 class NullCollision {
     test(features, field, symbol, ctx, projection = new _projection_web_mercator__WEBPACK_IMPORTED_MODULE_1__["WebMercator"]()) {
         return features;
@@ -917,6 +918,7 @@ class CoverCollision {
     constructor() {
         //drawn label bounds
         this._bounds = [];
+        this.buffer = 10; //pixel
     }
     test(features, field, symbol, ctx, projection = new _projection_web_mercator__WEBPACK_IMPORTED_MODULE_1__["WebMercator"]()) {
         if (!field || !symbol)
@@ -925,6 +927,7 @@ class CoverCollision {
         return features.reduce((acc, cur) => {
             const bound = cur.geometry.measure(cur.properties[field.name], ctx, projection, symbol);
             if (bound) {
+                bound.buffer(this.buffer);
                 const item = this._bounds.find(item => item.intersect(bound));
                 if (!item) {
                     acc.push(cur);
@@ -2164,6 +2167,12 @@ class Bound {
         this._ymin = this._ymin - (s - 1) * (this._ymax - this._ymin) / 2;
         this._ymax = this._ymax + (s - 1) * (this._ymax - this._ymin) / 2;
     }
+    buffer(size) {
+        this._xmin -= size;
+        this._ymin -= size;
+        this._xmax += size;
+        this._ymax += size;
+    }
 }
 
 
@@ -2278,7 +2287,7 @@ window.load = () => {
         field2.type = _dist__WEBPACK_IMPORTED_MODULE_0__["FieldType"].String;
         label.field = field2;
         label.symbol = symbol;
-        label.collision = new _dist__WEBPACK_IMPORTED_MODULE_0__["NullCollision"]();
+        label.collision = new _dist__WEBPACK_IMPORTED_MODULE_0__["CoverCollision"]();
         featureLayer.renderer = renderer;
         featureLayer.label = label;
         featureLayer.labeled = true;

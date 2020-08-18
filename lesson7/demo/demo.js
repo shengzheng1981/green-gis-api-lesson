@@ -52,7 +52,7 @@ window.load = () => {
         field2.type = FieldType.String;
         label.field = field2;
         label.symbol = symbol;
-        label.collision = new NullCollision();
+        label.collision = new CoverCollision();
         featureLayer.renderer = renderer;
         featureLayer.label = label;
         featureLayer.labeled = true;

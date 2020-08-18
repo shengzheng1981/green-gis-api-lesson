@@ -15,4 +15,5 @@ export declare class Bound {
     constructor(xmin: any, ymin: any, xmax: any, ymax: any);
     intersect(bound: Bound): boolean;
     scale(s: number): void;
+    buffer(size: number): void;
 }
