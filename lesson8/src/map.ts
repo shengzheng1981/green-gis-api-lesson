@@ -184,10 +184,9 @@ export class Map extends Subject {
 
     _onClick(event) {
         //this._handlers["click"].forEach(handler => handler(event));
-        const layers = [...this._layers];
         //探测是否有图层要素被点击
-        layers.filter(layer => layer.interactive).reverse().some((layer: FeatureLayer) => layer.contain(event.offsetX, event.offsetY, this.projection, this._extent, this._zoom, "click"));
-    
+        this._layers.filter(layer => layer.interactive).some(layer => layer.contain(event.offsetX, event.offsetY, this.projection, this._extent, this._zoom, "click"));
+        //地图点击响应
         this.emit("click", event);
     }
 
@@ -215,9 +214,9 @@ export class Map extends Subject {
     _onMouseMove(event) {
         //在非漫游状态下，触发mousemove事件
         if (!this._drag.flag) {
-            const layers = [...this._layers];
-             //探测鼠标是否悬停到某图层要素
-            layers.filter(layer => layer.interactive).filter(layer => layer.contain(event.offsetX, event.offsetY, this.projection, this._extent, this._zoom, "mousemove"));
+            //探测鼠标是否悬停到某图层要素
+            this._layers.filter(layer => layer.interactive).filter(layer => layer.contain(event.offsetX, event.offsetY, this.projection, this._extent, this._zoom, "mousemove"));
+            //地图鼠标移动响应
             this.emit("mousemove", event);
         }
     }

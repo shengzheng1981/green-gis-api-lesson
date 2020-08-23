@@ -1,8 +1,13 @@
 //可订阅对象
 export class Subject {
     //事件监听者列表
+    //{
+    //  click: [clickhander1, clickhandler2, ...]
+    //  mousemove: [mousemovehander1, mousemovehandler2, ...]
+    //}
     protected _handlers: any = { };
 
+    //["click", "mousemove"]
     constructor(events: string[]) {
         events.forEach( event => {
             this._handlers[event] = [];  //handlers array

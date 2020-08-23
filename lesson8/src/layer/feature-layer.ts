@@ -122,6 +122,7 @@ export class FeatureLayer extends Layer{
         if (this.visible && this._zoom[0] <= zoom && this._zoom[1] >= zoom) {
             //if call Array.some, maybe abort mouseout last feature which mouseover!!! but filter maybe cause slow!!!no choice
             //return this._featureClass.features.filter((feature: Feature) => feature.intersect(projection, extent)).some( (feature: Feature) => {
+            //遍历与当前视图与相交的要素，判断坐标是否落入相应要素
             const features = this._featureClass.features.filter((feature: Feature) => feature.intersect(projection, extent)).filter( (feature: Feature) => {
                 return feature.contain(screenX, screenY, event);
             });
