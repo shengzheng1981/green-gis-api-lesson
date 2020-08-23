@@ -1,0 +1,33 @@
+import { Projection } from "./projection/projection";
+import { Layer } from "./layer/layer";
+import { Graphic } from "./element/graphic";
+import { Subject } from "./util/subject";
+export declare class Map extends Subject {
+    private _container;
+    private _canvas;
+    private _ctx;
+    private _drag;
+    private _defaultGraphicLayer;
+    private _layers;
+    private _zoom;
+    private _center;
+    private _extent;
+    private _projection;
+    get projection(): Projection;
+    constructor(id: string | HTMLDivElement);
+    setProjection(projection: any): void;
+    setView(center?: number[], zoom?: number): void;
+    addLayer(layer: Layer): void;
+    addGraphic(graphic: Graphic): void;
+    updateExtent(): void;
+    redraw(): void;
+    clear(): void;
+    _onResize(event: any): void;
+    _onClick(event: any): void;
+    _onDoubleClick(event: any): void;
+    _onMouseDown(event: any): void;
+    _onMouseMove(event: any): void;
+    _onMouseUp(event: any): void;
+    _onWheel(event: any): void;
+    destroy(): void;
+}
