@@ -329,7 +329,9 @@ export class LetterSymbol extends PointSymbol {
 export class ArrowSymbol extends Symbol {
     public lineWidth: number = 2;
     public minLength: number = 50;     //>50pixel will draw arrow
+    //箭翼长度
     public arrowLength: number = 10;
+    //箭翼夹角
     public arrowAngle: number = Math.PI / 6;   //angle 30
 
     draw(ctx: CanvasRenderingContext2D, screen: number[][]) {
