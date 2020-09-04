@@ -288,3 +288,104 @@ export class ClusterSymbol extends PointSymbol {
         ctx.restore();
     }
 }
+
+//单字符号
+export class LetterSymbol extends PointSymbol {
+    public radius: number = 10;
+    //字母，中英文皆可，推荐单个字符
+    public letter: string = "";
+    public fontColor: string = "#ff0000";
+    public fontSize: number = 12;
+    public fontFamily: string = "YaHei";
+    public fontWeight: string = "Bold";
+
+    draw(ctx: CanvasRenderingContext2D, screenX, screenY) {
+        ctx.save();
+        ctx.strokeStyle = this.strokeStyle;
+        ctx.fillStyle = this.fillStyle;
+        ctx.lineWidth = this.lineWidth;
+        ctx.beginPath(); //Start path
+        //keep size
+        ctx.setTransform(1,0,0,1,0,0);
+        //绘制外圈
+        ctx.arc(screenX, screenY, this.radius, 0, Math.PI * 2, true);
+        ctx.fill();
+        ctx.stroke();
+        ctx.textBaseline = "middle";
+        ctx.textAlign = "center";
+        ctx.fillStyle = this.fontColor;
+        ctx.font =  this.fontSize + "px/1 " + this.fontFamily +  " " + this.fontWeight;
+        //绘制字符
+        ctx.fillText(this.letter, screenX, screenY);
+        ctx.restore();
+    }
+
+    contain(anchorX, anchorY, screenX, screenY) {
+        return Math.sqrt((anchorX - screenX) *  (anchorX - screenX) +  (anchorY - screenY) *  (anchorY - screenY)) <= this.radius;
+    }
+}
+
+//箭头符号
+export class ArrowSymbol extends Symbol {
+    public lineWidth: number = 2;
+    public minLength: number = 50;     //>50pixel will draw arrow
+    public arrowLength: number = 10;
+    public arrowAngle: number = Math.PI / 6;   //angle 30
+
+    draw(ctx: CanvasRenderingContext2D, screen: number[][]) {
+        ctx.save();
+        ctx.strokeStyle = this.strokeStyle;
+        ctx.lineWidth = this.lineWidth;
+        //keep lineWidth
+        ctx.setTransform(1,0,0,1,0,0);
+        ctx.beginPath();
+        screen.forEach( (point: any,index) => {
+            const screenX = point[0], screenY = point[1];
+            if (index === 0){
+                ctx.moveTo(screenX, screenY);
+            } else {
+                ctx.lineTo(screenX, screenY);
+            }
+        });
+        ctx.stroke();
+        screen.reduce( (prev, cur) => {
+            if (prev) {
+                const length = Math.sqrt((cur[0] - prev[0]) * (cur[0] - prev[0]) + (cur[1] - prev[1]) * (cur[1] - prev[1]));
+                if (length >= this.minLength) {
+                    //中点 即箭头
+                    const [middleX, middleY] = [(prev[0] + cur[0])/2, (prev[1] + cur[1])/2];
+                    //箭尾垂线的垂足
+                    const [footX, footY] = this._getPointAlongLine([middleX, middleY], prev, Math.cos(this.arrowAngle) * this.arrowLength);
+                    const k = (cur[1] - prev[1]) / (cur[0] - prev[0]);
+                    // 1/k 垂线
+                    const points = this._getPointAlongLine2( -1/k, footY - footX * -1/k, [footX, footY], Math.sin(this.arrowAngle) * this.arrowLength);
+                    //两点
+                    points.forEach(point => {
+                        ctx.beginPath();
+                        ctx.moveTo(middleX, middleY);
+                        ctx.lineTo(point[0], point[1]);
+                        ctx.stroke();
+                    });
+                }
+                return cur;
+            } else {
+                return cur;
+            }
+        });
+        ctx.restore();
+    }
+
+    //已知 起点和终点  求沿线距起点定长的点
+    _getPointAlongLine(p1, p2, d) {
+        //line length
+        let l = Math.sqrt((p2[0] - p1[0]) * (p2[0] - p1[0]) + (p2[1] - p1[1]) * (p2[1] - p1[1]));
+        let t = d / l;
+        return [(1 - t) * p1[0] + t * p2[0], (1 - t) * p1[1] + t * p2[1]];
+    }
+
+    //已知 起点 y = kx + b   求沿线距起点定长的点 两个点
+    _getPointAlongLine2(k, b, p, d) {
+        let x0 = p[0] + Math.sqrt( (d * d) / (k * k + 1)), x1 = p[0] - Math.sqrt( (d * d) / (k * k + 1));
+        return [[x0, k * x0 + b], [x1, k * x1 + b]];
+    }
+}
