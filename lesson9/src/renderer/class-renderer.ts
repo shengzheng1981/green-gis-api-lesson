@@ -3,38 +3,68 @@ import {Field} from "../data/field";
 import {FeatureClass} from "../data/feature-class";
 import {GeometryType} from "../geometry/geometry";
 import {Color} from "../util/color";
-//分级渲染项
+
+ /**
+ * 分级渲染项
+ * @remarks
+ * 分级区间一般为( ]: 即下开上闭
+ */
 export class ClassRendererItem {
-    //****************重要说明***************
-    //区间一般为(]: 即下开上闭
-    //分级的级别下限
+    /**
+     * 分级的级别下限
+     */
     low: number;
-    //分级的级别上限
+    /**
+     * 分级的级别上限
+     */
     high: number;
-    //分级渲染符号
+    /**
+     * 分级渲染符号
+     */
     symbol: Symbol;
-    //分级标题
-    //常用于图例中
+    /**
+     * 分级标题（常用于图例中）
+     */
     label: string;
 }
-//分级渲染
-//****************重要说明***************
-//一般可通过设置分级字段，再调用generate自动生成分级渲染项
-//也可通过手动添加和定义分级渲染项，完成分级渲染设置，通过items.push()
-export class ClassRenderer {
-    //分级字段，必须为数值型
-    private _field: Field;
-    private _items: ClassRendererItem[] = [];
 
+ /**
+ * 分级渲染
+ * @remarks
+ * 一般可通过设置分级字段，再调用generate自动生成分级渲染项
+ * 也可通过手动添加和定义分级渲染项，完成分级渲染设置，通过items.push()
+ */
+export class ClassRenderer {
+    /**
+     * 分级字段
+     * @remarks
+     * 必须为数值型
+     */
+    private _field: Field;
+    /**
+     * 所有分级渲染项集合
+     */
+    private _items: ClassRendererItem[] = [];
+    /**
+     * 分级字段
+     * @remarks
+     * 必须为数值型
+     */
     get field(): Field {
         return this._field;
     }
+    /**
+     * 所有分级渲染项集合
+     */
     get items(): ClassRendererItem[] {
         return this._items;
     }
 
-    //均分，自动生成分级渲染项
-    //TODO: 分级有多种方式，目前只实现均分
+    /**
+     * 自动生成分级渲染项
+     * @remarks
+     * TODO: 分级有多种方式，目前只实现均分
+     */
     generate(featureClass: FeatureClass, field: Field, breaks: number) {
         this._field = field;
         this._items = [];

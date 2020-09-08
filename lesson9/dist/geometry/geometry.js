@@ -1,39 +1,93 @@
 import { Bound } from "../util/bound";
 import { SimplePointSymbol, SimpleTextSymbol } from "../symbol/symbol";
 import { WebMercator } from "../projection/web-mercator";
+/**
+ * 坐标类型
+ * @enum {number}
+ */
 export var CoordinateType;
 (function (CoordinateType) {
+    /**
+     * 经纬度坐标
+     */
     CoordinateType[CoordinateType["Latlng"] = 1] = "Latlng";
+    /**
+     * 地理平面坐标
+     */
     CoordinateType[CoordinateType["Projection"] = 2] = "Projection";
+    /**
+     * 屏幕平面坐标
+     */
     CoordinateType[CoordinateType["Screen"] = 3] = "Screen";
 })(CoordinateType || (CoordinateType = {}));
+/**
+ * 图形类型
+ * @enum {number}
+ */
 export var GeometryType;
 (function (GeometryType) {
+    /**
+     * 点
+     */
     GeometryType[GeometryType["Point"] = 1] = "Point";
+    /**
+     * 线
+     */
     GeometryType[GeometryType["Polyline"] = 2] = "Polyline";
+    /**
+     * 面
+     */
     GeometryType[GeometryType["Polygon"] = 3] = "Polygon";
 })(GeometryType || (GeometryType = {}));
+/**
+ * 图形基类
+ */
 export class Geometry {
-    get bound() {
-        return this._bound;
-    }
+    /**
+     * 投影变换虚函数
+     * @param {Projection} projection - 坐标投影转换
+     */
     project(projection) { }
     ;
+    /**
+     * 图形绘制虚函数
+     * @param {CanvasRenderingContext2D} ctx - 绘图上下文
+     * @param {Projection} projection - 坐标投影转换
+     * @param {Bound} extent - 当前可视范围
+     * @param {Symbol} symbol - 渲染符号
+     */
     draw(ctx, projection = new WebMercator(), extent = projection.bound, symbol = new SimplePointSymbol()) { }
     ;
+    /**
+     * 图形包络矩形与可见视图范围是否包含或相交
+     * @param {Projection} projection - 坐标投影转换
+     * @param {Bound} extent - 当前可视范围
+     * @return {boolean} 是否在可视范围内
+     */
     intersect(projection = new WebMercator(), extent = projection.bound) {
         if (!this._projected)
             this.project(projection);
         return extent.intersect(this._bound);
     }
+    /**
+     * 获取图形中心点虚函数
+     * @param {CoordinateType} type - 坐标类型
+     * @param {Projection} projection - 坐标投影转换
+     * @return {number[]} 中心点坐标
+     */
     getCenter(type = CoordinateType.Latlng, projection = new WebMercator()) { }
     ;
-    getBound(projection = new WebMercator()) {
-        if (!this._projected)
-            this.project(projection);
-        return this._bound;
-    }
-    ;
+    /**
+     * 获取两个图形间距离
+     * @remarks
+     * 当前为两图形中心点间的直线距离
+     * 多用于聚合判断
+     * @param {Geometry} geometry - 另一图形
+     * @param {CoordinateType} type - 坐标类型
+     * @param {CanvasRenderingContext2D} ctx - 绘图上下文
+     * @param {Projection} projection - 坐标投影转换
+     * @return {number} 距离
+     */
     distance(geometry, type, ctx, projection = new WebMercator()) {
         const center = this.getCenter(type == CoordinateType.Screen ? CoordinateType.Projection : type, projection);
         const point = geometry.getCenter(type == CoordinateType.Screen ? CoordinateType.Projection : type, projection);
@@ -47,6 +101,15 @@ export class Geometry {
             return Math.sqrt((point[0] - center[0]) * (point[0] - center[0]) + (point[1] - center[1]) * (point[1] - center[1]));
         }
     }
+    /**
+     * 标注绘制
+     * @remarks
+     * 标注文本支持多行，/r/n换行
+     * @param {string} text - 标注文本
+     * @param {CanvasRenderingContext2D} ctx - 绘图上下文
+     * @param {Projection} projection - 坐标投影转换
+     * @param {SimpleTextSymbol} symbol - 标注符号
+     */
     label(text, ctx, projection = new WebMercator(), symbol = new SimpleTextSymbol()) {
         if (!text)
             return;
@@ -60,24 +123,40 @@ export class Geometry {
         ctx.font = symbol.fontSize + "px/1 " + symbol.fontFamily + " " + symbol.fontWeight;
         const center = this.getCenter(CoordinateType.Projection, projection);
         const matrix = ctx.getTransform();
-        //keep pixel
         ctx.setTransform(1, 0, 0, 1, 0, 0);
+        //标注文本多行分割
         const array = text.split("/r/n");
+        //计算每一行宽度
         let widths = array.map(str => ctx.measureText(str).width + symbol.padding * 2);
+        //取最大宽度，作为标注宽度
         let width = Math.max(...widths);
+        //高度取决于：字体大小，以及行数*行距，以及标注框上下的留白padding
         let height = symbol.fontSize * array.length + symbol.padding * 2 + symbol.padding * (array.length - 1);
         const screenX = (matrix.a * center[0] + matrix.e);
         const screenY = (matrix.d * center[1] + matrix.f);
+        //画标注外框
         ctx.strokeRect(screenX + symbol.offsetX - symbol.padding, screenY + symbol.offsetY - symbol.padding, width, height);
+        //填充标注背景
         ctx.fillRect(screenX + symbol.offsetX - symbol.padding, screenY + symbol.offsetY - symbol.padding, width, height);
         ctx.textBaseline = "top";
         ctx.fillStyle = symbol.fontColor;
+        //多行文本绘制
         array.forEach((str, index) => {
             ctx.fillText(str, screenX + symbol.offsetX + (width - widths[index]) / 2, screenY + symbol.offsetY + index * (symbol.fontSize + symbol.padding));
         });
         ctx.restore();
     }
     ;
+    /**
+     * 标注量算
+     * @remarks
+     * 标注文本支持多行，/r/n换行
+     * 目前用于寻找自动标注最合适的方位：top bottom left right
+     * @param {string} text - 标注文本
+     * @param {CanvasRenderingContext2D} ctx - 绘图上下文
+     * @param {Projection} projection - 坐标投影转换
+     * @param {SimpleTextSymbol} symbol - 标注符号
+     */
     measure(text, ctx, projection = new WebMercator(), symbol = new SimpleTextSymbol()) {
         if (!text)
             return;
@@ -85,11 +164,14 @@ export class Geometry {
         ctx.font = symbol.fontSize + "px/1 " + symbol.fontFamily + " " + symbol.fontWeight;
         const center = this.getCenter(CoordinateType.Projection, projection);
         const matrix = ctx.getTransform();
-        //keep pixel
         ctx.setTransform(1, 0, 0, 1, 0, 0);
+        //标注文本多行分割
         const array = text.split("/r/n");
+        //计算每一行宽度
         let widths = array.map(str => ctx.measureText(str).width + symbol.padding * 2);
+        //取最大宽度，作为标注宽度
         let width = Math.max(...widths);
+        //高度取决于：字体大小，以及行数*行距，以及标注框上下的留白padding
         let height = symbol.fontSize * array.length + symbol.padding * 2 + symbol.padding * (array.length - 1);
         const screenX = (matrix.a * center[0] + matrix.e);
         const screenY = (matrix.d * center[1] + matrix.f);
@@ -97,6 +179,12 @@ export class Geometry {
         return new Bound(screenX + symbol.offsetX - symbol.padding, screenY + symbol.offsetY - symbol.padding, screenX + symbol.offsetX - symbol.padding + width, screenY + symbol.offsetY - symbol.padding + height);
     }
     ;
-    //是否包含传入坐标，主要用于鼠标交互
+    /**
+     * 是否包含传入坐标
+     * @remarks 主要用于鼠标交互
+     * @param {number} screenX - 鼠标屏幕坐标X
+     * @param {number} screenX - 鼠标屏幕坐标Y
+     * @return {boolean} 是否落入
+     */
     contain(screenX, screenY) { return false; }
 }

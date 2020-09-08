@@ -50,10 +50,19 @@ export class Map extends Subject {
         }
     };
 
+    /**
+     * 坐标投影变换
+     * @type {Projection}
+     * @readonly
+     */
     get projection(): Projection {
         return this._projection;
     }
 
+    /**
+     * 创建地图
+     * @param {string | HTMLDivElement} id - HTMLDivElement | id
+     */
     constructor(id: string | HTMLDivElement) {
         //extent: 视图范围更新时
         //click:  单击地图时
@@ -96,7 +105,10 @@ export class Map extends Subject {
         window.addEventListener("resize", this._onResize);
     }
 
-    //设置投影
+    /**
+     * 设置坐标投影变换
+     * @param {Projection} projection - 坐标投影变换
+     */
     setProjection(projection) {
         this._projection = projection;
         //const bound: Bound = this._projection.bound;
@@ -114,7 +126,11 @@ export class Map extends Subject {
         this._ctx.setTransform(a , 0, 0, d, e, f);
     }
 
-    //设置视图级别及视图中心
+    /**
+     * 设置视图级别及视图中心
+     * @param {number[]} center - 视图中心
+     * @param {number} zoom - 视图级别
+     */
     setView(center: number[] = [0,0], zoom: number = 3) {
         this._center = center;
         this._zoom = Math.max(3, Math.min(20, zoom));
@@ -132,14 +148,21 @@ export class Map extends Subject {
         this.redraw();
     }
 
-    //添加图层
+    /**
+     * 添加图层
+     * @param {Layer} layer - 图层
+     */
     addLayer(layer: Layer) {
         this._layers.push(layer);
         layer.draw(this._ctx, this._projection, this._extent);
     }
 
-    //插入图层
-    insertLayer(layer: FeatureLayer, index: number = -1){
+    /**
+     * 插入图层
+     * @param {Layer} layer - 图层
+     * @param {number} index - 图层顺序
+     */
+    insertLayer(layer: Layer, index: number = -1){
         index = index > this._layers.length ? -1 : index;
         if (index == -1) {
             this.addLayer(layer);
@@ -149,27 +172,38 @@ export class Map extends Subject {
         }
     }
 
-    //移除图层
-    removeLayer(layer: FeatureLayer) {
+    /**
+     * 移除图层
+     * @param {Layer} layer - 图层
+     */
+    removeLayer(layer: Layer) {
         const index = this._layers.findIndex(item => item === layer);
         index != -1 && this._layers.splice(index, 1);
         this.redraw();
     }
 
-    //清空图层
+    /**
+     * 清空图层
+     */
     clearLayers() {
         this._layers = [];
         this.redraw();
     }
 
-    //添加图形，参考_defaultGraphicLayer定义处的说明
-    //shortcut
+    /**
+     * 添加图形
+     * 参考_defaultGraphicLayer定义处的说明
+     * shortcut
+     * @param {Graphic} graphic - 图形
+     */
     addGraphic(graphic: Graphic) {
         this._defaultGraphicLayer.add(graphic);
         graphic.draw(this._ctx, this._projection, this._extent);
     }
 
-    //更新地图视图范围以及中心点
+    /**
+     * 更新地图视图范围以及中心点
+     */
     updateExtent() {
         const matrix = (this._ctx as any).getTransform();
         const x1 = (0 - matrix.e)/matrix.a, y1 = (0-matrix.f)/matrix.d, x2 = (this._canvas.width - matrix.e)/matrix.a, y2 = (this._canvas.height-matrix.f)/matrix.d;
@@ -179,7 +213,9 @@ export class Map extends Subject {
         this.emit("extent", {extent: this._extent, center: this._center, zoom: this._zoom, matrix: matrix});
     }
 
-    //重绘
+    /**
+     * 重绘
+     */
     redraw() {
         this._ctx.save();
         this._ctx.setTransform(1,0,0,1,0,0);
@@ -199,7 +235,9 @@ export class Map extends Subject {
         });
     }
 
-    //清空视图
+    /**
+     * 清空视图
+     */
     clear() {
         this._ctx.setTransform(1, 0, 0, 1, 0, 0);
         this._ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
@@ -318,7 +356,9 @@ export class Map extends Subject {
         this.redraw();
     }
 
-    //销毁
+    /**
+     * 销毁
+     */
     destroy() {
         window.removeEventListener("resize", this._onResize);
         

@@ -1,23 +1,47 @@
 import {Bound} from "../util/bound";
 import {LatLngType, Projection} from "./projection";
 
-//国测局02
-//just for china
+/**
+ * 带国测局02偏移的球体墨卡托投影
+ * @remarks https://github.com/wandergis/coordtransform
+ * just for china
+ */
 export class GCJ02 extends Projection{
-    //地球半径
+    /**
+     * 地球半径
+     */
     static R = 6378137.0;
-    //不知含义的常数，用于WGS-84 与 GCJ-02 之间的转换
+    /**
+     * ee
+     * @remarks 
+     * 不知含义的常数，用于WGS-84 与 GCJ-02 之间的转换
+     */
     static ee = 0.00669342162296594323;
     private _type: LatLngType;
+    /**
+     * 创建带国测局02偏移的球体墨卡托投影
+     * @remarks 参考经纬度坐标类型，不同类型走不同数据处理流程
+     * @param {LatLngType} type - 经纬度坐标类型
+     */
     constructor(type: LatLngType = LatLngType.GPS) {
         super();
         this._type = type;
     }
-    //投影后的平面坐标范围
+
+    /**
+     * 投影后的平面坐标范围
+     */
     get bound(): Bound {
         return new Bound(- Math.PI * GCJ02.R, Math.PI * GCJ02.R, Math.PI * GCJ02.R, -Math.PI * GCJ02.R);
     }
-    //经纬度转平面坐标
+
+    /**
+     * 经纬度转平面坐标
+     * @remarks 地理平面坐标 单位米
+     * @param {number} lng - 经度
+     * @param {number} lat - 纬度
+     * @return {number[]} 地理平面坐标
+     */    
     project([lng, lat]): number[] {
         if (this._type == LatLngType.GPS) {
             [lng, lat] = GCJ02.wgs84togcj02(lng, lat);
@@ -26,18 +50,25 @@ export class GCJ02 extends Projection{
         const d = Math.PI / 180, sin = Math.sin(lat * d);
         return [GCJ02.R * lng * d,  GCJ02.R * Math.log((1 + sin) / (1 - sin)) / 2];
     }
-    //平面坐标转经纬度
+
+    /**
+     * 平面坐标转经纬度
+     * @remarks 地理平面坐标 单位米
+     * @param {number} x - 地理平面坐标x
+     * @param {number} y - 地理平面坐标y
+     * @return {number[]} 经纬度
+     */
     unproject([x, y]): number[] {
         const d = 180 / Math.PI;
         return  [x * d / GCJ02.R, (2 * Math.atan(Math.exp(y / GCJ02.R)) - (Math.PI / 2)) * d];
     }
 
-    //from https://github.com/wandergis/coordtransform
     /**
      * WGS-84 转 GCJ-02
+     * @remarks https://github.com/wandergis/coordtransform
      * @param lng
      * @param lat
-     * @returns {*[]}
+     * @returns {number[]}
      */
     static wgs84togcj02(lng, lat) {
         var dlat = this._transformlat(lng - 105.0, lat - 35.0);
@@ -55,9 +86,10 @@ export class GCJ02 extends Projection{
 
     /**
      * GCJ-02 转换为 WGS-84
+     * @remarks https://github.com/wandergis/coordtransform
      * @param lng
      * @param lat
-     * @returns {*[]}
+     * @returns {number[]}
      */
     static gcj02towgs84(lng, lat) {
         var dlat = this._transformlat(lng - 105.0, lat - 35.0);
@@ -89,10 +121,9 @@ export class GCJ02 extends Projection{
         return ret
     };
 
-
-    //此判断欠妥，暂不采用！
     /**
      * 判断是否在国内，不在国内则不做偏移
+     * @remarks 此判断欠妥，暂不采用！
      * @param lng
      * @param lat
      * @returns {boolean}

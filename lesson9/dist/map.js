@@ -3,7 +3,14 @@ import { WebMercator } from "./projection/web-mercator";
 import { FeatureLayer } from "./layer/feature-layer";
 import { GraphicLayer } from "./layer/graphic-layer";
 import { Subject } from "./util/subject";
+/**
+* 地图
+*/
 export class Map extends Subject {
+    /**
+     * 创建地图
+     * @param {string | HTMLDivElement} id - HTMLDivElement | id
+     */
     constructor(id) {
         //extent: 视图范围更新时
         //click:  单击地图时
@@ -11,24 +18,30 @@ export class Map extends Subject {
         //mousemove: 鼠标移动时
         //resize: 视图容器尺寸调整时
         super(["extent", "click", "dblclick", "mousemove", "resize"]);
-        this._drag = {
-            flag: false,
-            start: {
-                x: 0,
-                y: 0
-            },
-            end: {
-                x: 0,
-                y: 0
-            }
-        };
-        //private _geometries: Geometry[] = [];
+        //默认为地图添加一个图形图层，为地图添加图形接口提供便捷，语法糖而已，无他
         this._defaultGraphicLayer = new GraphicLayer();
+        //图层集合
         this._layers = [];
         //地图缩放等级
         this._zoom = 1;
         //地图视图中心
         this._center = [0, 0];
+        //地图漫游操作相关私有变量及标记
+        //辅助响应mousedown mouseup，完成地图漫游（平移）
+        this._drag = {
+            //是否处于漫游状态
+            flag: false,
+            //漫游起始坐标
+            start: {
+                x: 0,
+                y: 0
+            },
+            //漫游结束坐标
+            end: {
+                x: 0,
+                y: 0
+            }
+        };
         this._container = id instanceof HTMLDivElement ? id : document.getElementById(id);
         //create canvas
         this._canvas = document.createElement("canvas");
@@ -37,12 +50,14 @@ export class Map extends Subject {
         this._canvas.height = this._container.clientHeight;
         this._container.appendChild(this._canvas);
         this._ctx = this._canvas.getContext("2d");
+        //bind this，请参考js中this相关知识
         this._onClick = this._onClick.bind(this);
         this._onDoubleClick = this._onDoubleClick.bind(this);
         this._onMouseDown = this._onMouseDown.bind(this);
         this._onMouseMove = this._onMouseMove.bind(this);
         this._onMouseUp = this._onMouseUp.bind(this);
         this._onWheel = this._onWheel.bind(this);
+        //添加canvas listener
         this._canvas.addEventListener("click", this._onClick);
         this._canvas.addEventListener("dblclick", this._onDoubleClick);
         this._canvas.addEventListener("mousedown", this._onMouseDown);
@@ -52,23 +67,23 @@ export class Map extends Subject {
         //初始化
         this._projection = new WebMercator();
         this.setView([0, 0], 10);
+        //响应窗体resize
+        //非常重要，resize后响应，完成重绘
         this._onResize = this._onResize.bind(this);
         window.addEventListener("resize", this._onResize);
     }
-    //地图事件的handlers
-    /* private _events: any = {
-        "move": [],    //漫游时，暂预留
-        "extent": []   //视图范围更新时，当前关注该事件
-    }; */
+    /**
+     * 坐标投影变换
+     * @type {Projection}
+     * @readonly
+     */
     get projection() {
         return this._projection;
     }
-    //地图事件注册监听
-    //TODO: need to off
-    /* on(event, handler) {
-        this._events[event].push(handler);
-    } */
-    //设置投影
+    /**
+     * 设置坐标投影变换
+     * @param {Projection} projection - 坐标投影变换
+     */
     setProjection(projection) {
         this._projection = projection;
         //const bound: Bound = this._projection.bound;
@@ -85,7 +100,11 @@ export class Map extends Subject {
         const f = this._canvas.height / 2 - d * origin[1];
         this._ctx.setTransform(a, 0, 0, d, e, f);
     }
-    //设置视图级别及视图中心
+    /**
+     * 设置视图级别及视图中心
+     * @param {number[]} center - 视图中心
+     * @param {number} zoom - 视图级别
+     */
     setView(center = [0, 0], zoom = 3) {
         this._center = center;
         this._zoom = Math.max(3, Math.min(20, zoom));
@@ -102,21 +121,58 @@ export class Map extends Subject {
         this._ctx.setTransform(a, 0, 0, d, e, f);
         this.redraw();
     }
-    //TODO: manage geometry by layer
-    /* addGeometry(geometry: Geometry) {
-        geometry.draw(this._ctx);
-        this._geometries.push(geometry);
-    } */
+    /**
+     * 添加图层
+     * @param {Layer} layer - 图层
+     */
     addLayer(layer) {
         this._layers.push(layer);
         layer.draw(this._ctx, this._projection, this._extent);
     }
-    //shortcut
+    /**
+     * 插入图层
+     * @param {Layer} layer - 图层
+     * @param {number} index - 图层顺序
+     */
+    insertLayer(layer, index = -1) {
+        index = index > this._layers.length ? -1 : index;
+        if (index == -1) {
+            this.addLayer(layer);
+        }
+        else {
+            this._layers.splice(index, 0, layer);
+            this.redraw();
+        }
+    }
+    /**
+     * 移除图层
+     * @param {Layer} layer - 图层
+     */
+    removeLayer(layer) {
+        const index = this._layers.findIndex(item => item === layer);
+        index != -1 && this._layers.splice(index, 1);
+        this.redraw();
+    }
+    /**
+     * 清空图层
+     */
+    clearLayers() {
+        this._layers = [];
+        this.redraw();
+    }
+    /**
+     * 添加图形
+     * 参考_defaultGraphicLayer定义处的说明
+     * shortcut
+     * @param {Graphic} graphic - 图形
+     */
     addGraphic(graphic) {
         this._defaultGraphicLayer.add(graphic);
         graphic.draw(this._ctx, this._projection, this._extent);
     }
-    //更新地图视图范围以及中心点
+    /**
+     * 更新地图视图范围以及中心点
+     */
     updateExtent() {
         const matrix = this._ctx.getTransform();
         const x1 = (0 - matrix.e) / matrix.a, y1 = (0 - matrix.f) / matrix.d, x2 = (this._canvas.width - matrix.e) / matrix.a, y2 = (this._canvas.height - matrix.f) / matrix.d;
@@ -125,6 +181,9 @@ export class Map extends Subject {
         //this._events.extent.forEach(handler => handler({extent: this._extent, center: this._center, zoom: this._zoom, matrix: matrix}));
         this.emit("extent", { extent: this._extent, center: this._center, zoom: this._zoom, matrix: matrix });
     }
+    /**
+     * 重绘
+     */
     redraw() {
         this._ctx.save();
         this._ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -133,30 +192,40 @@ export class Map extends Subject {
         this.updateExtent();
         //this._geometries.forEach(geometry => geometry.draw(this._ctx));
         this._defaultGraphicLayer.draw(this._ctx, this._projection, this._extent, this._zoom);
+        //重绘要素
         this._layers.forEach(layer => {
             layer.draw(this._ctx, this._projection, this._extent, this._zoom);
         });
+        //重绘标注
+        //分开的原因，一般标注在上！
         this._layers.filter(layer => layer instanceof FeatureLayer && layer.labeled).forEach((layer) => {
             layer.drawLabel(this._ctx, this._projection, this._extent, this._zoom);
         });
     }
+    /**
+     * 清空视图
+     */
     clear() {
         this._ctx.setTransform(1, 0, 0, 1, 0, 0);
         this._ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
     }
+    //响应窗体resize
     _onResize(event) {
         this._canvas.width = this._container.clientWidth;
         this._canvas.height = this._container.clientHeight;
         this.emit("resize", event);
         this.setView(this._center, this._zoom);
     }
+    //响应canvas被点击
     _onClick(event) {
         //this._handlers["click"].forEach(handler => handler(event));
-        const layers = [...this._layers];
         //探测是否有图层要素被点击
-        layers.filter(layer => layer.interactive).reverse().some((layer) => layer.contain(event.offsetX, event.offsetY, this.projection, this._extent, this._zoom, "click"));
+        this._layers.filter(layer => layer.interactive).some(layer => layer.contain(event.offsetX, event.offsetY, this.projection, this._extent, this._zoom, "click"));
+        //地图点击响应
         this.emit("click", event);
     }
+    //响应canvas被双击
+    //默认交互，双击放大一倍
     _onDoubleClick(event) {
         if (this._zoom >= 20)
             return;
@@ -171,6 +240,8 @@ export class Map extends Subject {
         this.redraw();
         this.emit("dblclick", event);
     }
+    //响应canvas mousedown
+    //漫游起始
     _onMouseDown(event) {
         //设置为漫游状态
         this._drag.flag = true;
@@ -180,12 +251,14 @@ export class Map extends Subject {
     _onMouseMove(event) {
         //在非漫游状态下，触发mousemove事件
         if (!this._drag.flag) {
-            const layers = [...this._layers];
             //探测鼠标是否悬停到某图层要素
-            layers.filter(layer => layer.interactive).filter(layer => layer.contain(event.offsetX, event.offsetY, this.projection, this._extent, this._zoom, "mousemove"));
+            this._layers.filter(layer => layer.interactive).filter(layer => layer.contain(event.offsetX, event.offsetY, this.projection, this._extent, this._zoom, "mousemove"));
+            //地图鼠标移动响应
             this.emit("mousemove", event);
         }
     }
+    //响应canvas mouseup
+    //漫游结束
     _onMouseUp(event) {
         //在漫游状态下
         if (this._drag.flag) {
@@ -198,6 +271,7 @@ export class Map extends Subject {
         }
         this._drag.flag = false;
     }
+    //响应滚轮缩放
     _onWheel(event) {
         event.preventDefault();
         const sensitivity = 5;
@@ -244,6 +318,9 @@ export class Map extends Subject {
         this._ctx.transform(scale, 0, 0, scale, e, f);
         this.redraw();
     }
+    /**
+     * 销毁
+     */
     destroy() {
         window.removeEventListener("resize", this._onResize);
         this._canvas.removeEventListener("click", this._onClick);

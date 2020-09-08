@@ -1,23 +1,49 @@
 import { SimpleFillSymbol, SimpleLineSymbol, SimplePointSymbol } from "../symbol/symbol";
 import { GeometryType } from "../geometry/geometry";
 import { Color } from "../util/color";
+/**
+* 分级渲染项
+* @remarks
+* 分级区间一般为( ]: 即下开上闭
+*/
 export class ClassRendererItem {
 }
-//分级渲染
+/**
+* 分级渲染
+* @remarks
+* 一般可通过设置分级字段，再调用generate自动生成分级渲染项
+* 也可通过手动添加和定义分级渲染项，完成分级渲染设置，通过items.push()
+*/
 export class ClassRenderer {
     constructor() {
+        /**
+         * 所有分级渲染项集合
+         */
         this._items = [];
     }
+    /**
+     * 分级字段
+     * @remarks
+     * 必须为数值型
+     */
     get field() {
         return this._field;
     }
+    /**
+     * 所有分级渲染项集合
+     */
     get items() {
         return this._items;
     }
-    //均分
+    /**
+     * 自动生成分级渲染项
+     * @remarks
+     * TODO: 分级有多种方式，目前只实现均分
+     */
     generate(featureClass, field, breaks) {
         this._field = field;
         this._items = [];
+        //获取该字段极值
         const stat = featureClass.features.map(feature => feature.properties[field.name]).reduce((stat, cur) => {
             stat.max = Math.max(cur, stat.max);
             stat.min = Math.min(cur, stat.max);

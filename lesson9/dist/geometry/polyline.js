@@ -2,17 +2,37 @@ import { Geometry, CoordinateType } from "./geometry";
 import { Bound } from "../util/bound";
 import { SimpleLineSymbol } from "../symbol/symbol";
 import { WebMercator } from "../projection/web-mercator";
-//线
+/**
+ * 线
+ * @remarks
+ * 数据结构：such as [[1,1],[2,2],[1,2]]
+ */
 export class Polyline extends Geometry {
+    /**
+     * 创建线
+     * @param {number[][]} lnglats - 坐标集合，二维数组
+     */
     constructor(lnglats) {
         super();
-        this._tolerance = 4; //TOLERANCE + symbol.lineWidth
+        /**
+         * 交互鼠标坐标到线垂直距离的可选范围
+         * @remarks
+         * 可选范围 = 容差 + 线宽
+         * TOLERANCE + symbol.lineWidth
+         */
+        this._tolerance = 4;
         this._lnglats = lnglats;
     }
     ;
+    /**
+     * 投影变换
+     * @param {Projection} projection - 坐标投影转换
+     */
     project(projection) {
         this._projection = projection;
+        //经纬度转平面坐标
         this._coordinates = this._lnglats.map((point) => this._projection.project(point));
+        //提取包络矩形
         let xmin = Number.MAX_VALUE, ymin = Number.MAX_VALUE, xmax = -Number.MAX_VALUE, ymax = -Number.MAX_VALUE;
         this._coordinates.forEach(point => {
             xmin = Math.min(xmin, point[0]);
@@ -22,9 +42,18 @@ export class Polyline extends Geometry {
         });
         this._bound = new Bound(xmin, ymin, xmax, ymax);
     }
+    /**
+     * 绘制线
+     * @param {CanvasRenderingContext2D} ctx - 绘图上下文
+     * @param {Projection} projection - 坐标投影转换
+     * @param {Bound} extent - 当前可视范围
+     * @param {Symbol} symbol - 渲染符号
+     */
     draw(ctx, projection = new WebMercator(), extent = projection.bound, symbol = new SimpleLineSymbol()) {
+        //如第一次绘制，没有经过投影，则先完成投影，以后可跳过
         if (!this._projected)
             this.project(projection);
+        //再判断是否在可视范围内
         if (!extent.intersect(this._bound))
             return;
         this._tolerance = Polyline.TOLERANCE + symbol.lineWidth;
@@ -33,27 +62,17 @@ export class Polyline extends Geometry {
             const screenX = (matrix.a * point[0] + matrix.e), screenY = (matrix.d * point[1] + matrix.f);
             return [screenX, screenY];
         });
+        //TODO: cache screenXY & symbol for redraw.
         symbol.draw(ctx, this._screen);
-        /* ctx.save();
-        ctx.strokeStyle = (symbol as SimpleLineSymbol).strokeStyle;
-        ctx.lineWidth = (symbol as SimpleLineSymbol).lineWidth;
-        const matrix = (ctx as any).getTransform();
-        //keep lineWidth
-        ctx.setTransform(1,0,0,1,0,0);
-        //TODO:  exceeding the maximum extent(bound), best way is overlap by extent. find out: maximum is [-PI*R, PI*R]??
-        ctx.beginPath();
-        this._coordinates.forEach( (point: any,index) => {
-            const screenX = (matrix.a * point[0] + matrix.e), screenY = (matrix.d * point[1] + matrix.f);
-            if (index === 0){
-                ctx.moveTo(screenX, screenY);
-            } else {
-                ctx.lineTo(screenX, screenY);
-            }
-        });
-        ctx.stroke();
-        ctx.restore(); */
     }
-    //from Leaflet
+    /**
+     * 获取线的中心点
+     * @remarks
+     * from Leaflet
+     * @param {CoordinateType} type - 坐标类型
+     * @param {Projection} projection - 坐标投影转换
+     * @return {number[]} 中心点坐标
+     */
     getCenter(type = CoordinateType.Latlng, projection = new WebMercator()) {
         if (!this._projected)
             this.project(projection);
@@ -90,14 +109,40 @@ export class Polyline extends Geometry {
             return center;
         }
     }
-    //线是1维，所以要设置一个tolerance容差，来判断坐标是否落到线上
+    /**
+     * 是否包含传入坐标
+     * @remarks
+     * 线是1维，所以要设置一个tolerance容差，来判断坐标是否落到线上
+     * @param {number} screenX - 鼠标屏幕坐标X
+     * @param {number} screenX - 鼠标屏幕坐标Y
+     * @return {boolean} 是否落入
+     */
     contain(screenX, screenY) {
         let p2;
+        //from Leaflet
+        //点到线段的距离，垂直距离
+        const _distanceToSegment = (p, p1, p2) => {
+            let x = p1[0], y = p1[1], dx = p2[0] - x, dy = p2[1] - y, dot = dx * dx + dy * dy, t;
+            if (dot > 0) {
+                t = ((p[0] - x) * dx + (p[1] - y) * dy) / dot;
+                if (t > 1) {
+                    x = p2[0];
+                    y = p2[1];
+                }
+                else if (t > 0) {
+                    x += dx * t;
+                    y += dy * t;
+                }
+            }
+            dx = p[0] - x;
+            dy = p[1] - y;
+            return Math.sqrt(dx * dx + dy * dy);
+        };
         const distance = this._screen.reduce((acc, cur) => {
             if (p2) {
                 const p1 = p2;
                 p2 = cur;
-                return Math.min(acc, this._distanceToSegment([screenX, screenY], p1, p2));
+                return Math.min(acc, _distanceToSegment([screenX, screenY], p1, p2));
             }
             else {
                 p2 = cur;
@@ -106,24 +151,11 @@ export class Polyline extends Geometry {
         }, Number.MAX_VALUE);
         return distance <= this._tolerance;
     }
-    //from Leaflet
-    //点到线段的距离，垂直距离
-    _distanceToSegment(p, p1, p2) {
-        let x = p1[0], y = p1[1], dx = p2[0] - x, dy = p2[1] - y, dot = dx * dx + dy * dy, t;
-        if (dot > 0) {
-            t = ((p[0] - x) * dx + (p[1] - y) * dy) / dot;
-            if (t > 1) {
-                x = p2[0];
-                y = p2[1];
-            }
-            else if (t > 0) {
-                x += dx * t;
-                y += dy * t;
-            }
-        }
-        dx = p[0] - x;
-        dy = p[1] - y;
-        return Math.sqrt(dx * dx + dy * dy);
-    }
 }
-Polyline.TOLERANCE = 4; //screen pixel
+/**
+ * 容差
+ * @remarks
+ * 用于交互（线宽较小的情况下，难以选中）
+ * screen pixel
+ */
+Polyline.TOLERANCE = 4;

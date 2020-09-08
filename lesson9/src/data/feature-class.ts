@@ -5,72 +5,112 @@ import {Point} from "../geometry/point";
 import {Polyline} from "../geometry/polyline";
 import {Polygon} from "../geometry/polygon";
 
-//要素类（要素集合）
-//TODO: a lot of things to be done
+/**
+ * 要素类（要素集合）
+ * @remarks 
+ * TODO: a lot of things to be done
+ */
 export class FeatureClass {
-    //集合名称
+    /**
+     * 要素集合名称
+     */
     name: string;
-    //别名
+    /**
+     * 要素集合别名
+     */
     alias: string;
-    //描述
+    /**
+     * 要素集合描述
+     */
     description: string;
-    //空间数据类型：点/线/面
+    /**
+     * 空间数据类型：点/线/面
+     */
     private _type: GeometryType;
-    //属性字段集合
+    /**
+     * 属性字段集合
+     */
     private _fields: Field[] = [];
-    //要素集合
+    /**
+     * 要素集合
+     */
     private _features: Feature[] = [];
-
+    /**
+     * 空间数据类型：点/线/面
+     */
     get type(): GeometryType {
         return this._type;
     }
-
+    /**
+     * 要素集合
+     */
     get features(): Feature[] {
         return this._features;
     }
-
+    /**
+     * 属性字段集合
+     */
     get fields(): Field[] {
         return this._fields;
     }
-
+    /**
+     * 创建要素集合
+     * @param {GeometryType} type - 空间数据类型：点/线/面
+     */
     constructor(type: GeometryType) {
         this._type = type;
     }
 
-    //添加要素
+    /**
+     * 添加要素
+     * @param {Feature} feature - 空间矢量要素
+     */
     addFeature(feature: Feature) {
         this._features.push(feature);
     }
-
-    //删除要素
+    /**
+     * 删除要素
+     * @param {Feature} feature - 空间矢量要素
+     */
     removeFeature(feature: Feature) {
         const index = this._features.findIndex(item => item === feature);
         index != -1 && this._features.splice(index, 1);
     }
-
-    //清空要素集合
+    /**
+     * 清空要素集合
+     */
     clearFeatures() {
         this._features = [];
     }
 
-    //添加字段
+    /**
+     * 添加字段
+     * @param {Field} field - 字段
+     */
     addField(field: Field) {
         this._fields.push(field);
     }
-
-    //删除字段
+     /**
+     * 删除字段
+     * @param {Field} field - 字段
+     */
     removeField(field: Field) {
         const index = this._fields.findIndex(item => item === field);
         index != -1 && this._fields.splice(index, 1);
     }
-
-    //清空字段集合
+     /**
+     * 清空字段集合
+     */
     clearFields() {
         this._fields = [];
     }
 
-    //加载GeoJSON数据格式
-    //TODO: multiple point line polygon is not supported
+    /**
+     * 加载GeoJSON数据格式
+     * @remarks 
+     * TODO: multiple point line polygon is not supported
+     * @param {Object} data - GeoJSON数据
+     */
     loadGeoJSON(data) {
         Array.isArray(data.features) && data.features.forEach(item => {
             switch (item.geometry.type) {

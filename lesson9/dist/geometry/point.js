@@ -11,60 +11,65 @@ import { Geometry, CoordinateType } from "./geometry";
 import { Bound } from "../util/bound";
 import { SimplePointSymbol } from "../symbol/symbol";
 import { WebMercator } from "../projection/web-mercator";
-//点
+/**
+ * 点
+ */
 export class Point extends Geometry {
+    /**
+     * 创建点
+     * @param {number} lng - 经度
+     * @param {number} lat - 纬度
+     */
     constructor(lng, lat) {
         super();
         this._lng = lng;
         this._lat = lat;
     }
     ;
+    /**
+     * 投影变换
+     * @param {Projection} projection - 坐标投影转换
+     */
     project(projection) {
         this._projection = projection;
+        //经纬度转平面坐标
         [this._x, this._y] = this._projection.project([this._lng, this._lat]);
-        //TODO: bound tolerance
+        //TODO: bound tolerance.
+        //包络矩形，当前是点，可考虑加入buffer或tolerance
         this._bound = new Bound(this._x, this._y, this._x, this._y);
         this._projected = true;
     }
+    /**
+     * 绘制点
+     * @param {CanvasRenderingContext2D} ctx - 绘图上下文
+     * @param {Projection} projection - 坐标投影转换
+     * @param {Bound} extent - 当前可视范围
+     * @param {Symbol} symbol - 渲染符号
+     */
     draw(ctx, projection = new WebMercator(), extent = projection.bound, symbol = new SimplePointSymbol()) {
         return __awaiter(this, void 0, void 0, function* () {
+            //如第一次绘制，没有经过投影，则先完成投影，以后可跳过
             if (!this._projected)
                 this.project(projection);
+            //再判断是否在可视范围内
             if (!extent.intersect(this._bound))
                 return;
+            //获得屏幕坐标，以便根据symbol来进行绘制
+            //TODO: cache screenXY & symbol for redraw.
             const matrix = ctx.getTransform();
             this._screenX = (matrix.a * this._x + matrix.e);
             this._screenY = (matrix.d * this._y + matrix.f);
             this._symbol = symbol;
             this._symbol.draw(ctx, this._screenX, this._screenY);
-            /*if (symbol instanceof SimplePointSymbol) {
-                ctx.save();
-                ctx.strokeStyle = (symbol as SimplePointSymbol).strokeStyle;
-                ctx.fillStyle = (symbol as SimplePointSymbol).fillStyle;
-                ctx.lineWidth = (symbol as SimplePointSymbol).lineWidth;
-                ctx.beginPath(); //Start path
-                //keep size
-                //地理坐标 转回 屏幕坐标
-                ctx.setTransform(1,0,0,1,0,0);
-                ctx.arc(this._screenX, this._screenY, (symbol as SimplePointSymbol).radius, 0, Math.PI * 2, true);
-                ctx.fill();
-                ctx.stroke();
-                ctx.restore();
-            } else if (symbol instanceof SimpleMarkerSymbol) {
-                const marker: SimpleMarkerSymbol = symbol;
-                if (!marker.loaded) await marker.load();
-                if (marker.icon) {
-                    ctx.save();
-                    const matrix = (ctx as any).getTransform();
-                    //keep size
-                    ctx.setTransform(1,0,0,1,0,0);
-                    ctx.drawImage(marker.icon, this._screenX + marker.offsetX, this._screenY + marker.offsetY, marker.width, marker.height);
-                    ctx.restore();
-                }
-            } */
         });
     }
     ;
+    /**
+     * 获取中心点
+     * @param {CoordinateType} type - 坐标类型
+     * @param {Projection} projection - 坐标投影转换
+     * @return {number[]} 中心点坐标
+     */
     getCenter(type = CoordinateType.Latlng, projection = new WebMercator()) {
         if (!this._projected)
             this.project(projection);
@@ -75,18 +80,15 @@ export class Point extends Geometry {
             return [this._x, this._y];
         }
     }
-    //由于点是0维，主要根据渲染的符号大小来判断传入坐标是否落到点内
+    /**
+     * 是否包含传入坐标
+     * @remarks
+     * 由于点是0维，主要根据渲染的符号大小来判断传入坐标是否落到点内
+     * @param {number} screenX - 鼠标屏幕坐标X
+     * @param {number} screenX - 鼠标屏幕坐标Y
+     * @return {boolean} 是否落入
+     */
     contain(screenX, screenY) {
-        /*if (this._symbol instanceof SimplePointSymbol) {
-            return Math.sqrt((this._screenX - screenX) *  (this._screenX - screenX) +  (this._screenY - screenY) *  (this._screenY - screenY)) <= (this._symbol as SimplePointSymbol).radius;
-        } else if (this._symbol instanceof SimpleMarkerSymbol) {
-            return screenX >= (this._screenX + this._symbol.offsetX) &&  screenX <= (this._screenX + this._symbol.offsetX + this._symbol.width) && screenY >= (this._screenY + this._symbol.offsetY) &&  screenY <= (this._screenY + this._symbol.offsetY + this._symbol.height);
-        } else if (this._symbol instanceof LetterSymbol) {
-            return Math.sqrt((this._screenX - screenX) *  (this._screenX - screenX) +  (this._screenY - screenY) *  (this._screenY - screenY)) <= (this._symbol as LetterSymbol).radius;
-        } else if (this._symbol instanceof VertexSymbol) {
-            return screenX >= (this._screenX - this._symbol.size / 2) &&  screenX <= (this._screenX + this._symbol.size / 2) && screenY >= (this._screenY - this._symbol.size / 2) &&  screenY <= (this._screenY + this._symbol.size / 2);
-        }*/
         return this._symbol ? this._symbol.contain(this._screenX, this._screenY, screenX, screenY) : false;
     }
 }
-Point.RADIUS = 10; //10px
