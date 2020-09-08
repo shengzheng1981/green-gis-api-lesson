@@ -121,11 +121,11 @@ export class FeatureLayer extends Layer{
                 } else if (this._renderer instanceof CategoryRenderer) {
                     const renderer: CategoryRenderer = this._renderer;
                     const item = renderer.items.find( item => item.value == feature.properties[renderer.field.name]);
-                    return item.symbol;
+                    if (item) return item.symbol;
                 } else if (this._renderer instanceof ClassRenderer) {
                     const renderer: ClassRenderer = this._renderer;
                     const item = renderer.items.find( item => item.low <= feature.properties[renderer.field.name] && item.high >= feature.properties[renderer.field.name]);
-                    return item.symbol;
+                    if (item) return item.symbol;
                 }
             }
             //如果是点图层，同时又设置为聚合显示时
